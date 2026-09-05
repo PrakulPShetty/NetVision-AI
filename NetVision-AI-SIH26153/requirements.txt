@@ -1,0 +1,32 @@
+# ==========================================
+# NetVision-AI-SIH26153 - Python Dependencies
+# ==========================================
+
+# ---------- Data Manipulation ----------
+numpy
+pandas
+
+# ---------- Scientific Computing ----------
+scipy
+
+# ---------- Machine Learning ----------
+scikit-learn
+xgboost
+lightgbm
+
+# ---------- Explainable AI ----------
+shap
+
+# ---------- Data Visualization ----------
+matplotlib
+seaborn
+
+# ---------- Model Serialization ----------
+joblib
+
+# ---------- Backend / REST API ----------
+fastapi
+uvicorn
+
+# ---------- Testing ----------
+pytest

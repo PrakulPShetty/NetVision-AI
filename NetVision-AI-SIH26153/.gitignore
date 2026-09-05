@@ -1,0 +1,81 @@
+# ==========================================
+# NetVision-AI-SIH26153 - Git Ignore
+# ==========================================
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ---------- Virtual Environments ----------
+.venv/
+venv/
+env/
+ENV/
+
+# ---------- Environment / Secrets ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Jupyter / Colab ----------
+.ipynb_checkpoints/
+
+# ---------- Local Data ----------
+# Raw and intermediate datasets should not be committed
+data/raw/*
+data/interim/*
+
+# Keep README files in data directories
+!data/raw/README.md
+!data/interim/README.md
+
+# Processed datasets may be large
+# They are intended to be stored/accessed through Hugging Face
+data/processed/*
+
+# Keep README
+!data/processed/README.md
+
+# ---------- Model Artifacts ----------
+# Trained models can become large
+models/trained/*
+models/preprocessing/*
+
+# Keep documentation
+!models/README.md
+
+# ---------- Temporary / Generated Files ----------
+*.tmp
+*.temp
+*.log
+*.cache
+
+# ---------- Python Build Files ----------
+build/
+dist/
+*.egg-info/
+
+# ---------- Testing / Coverage ----------
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ---------- IDE ----------
+.vscode/
+.idea/
+
+# ---------- Operating System ----------
+.DS_Store
+Thumbs.db
+
+# ---------- Secrets / Credentials ----------
+*.pem
+*.key
+credentials.json
+service-account.json
+
+# ---------- Backup Files ----------
+*.bak
+*.swp
+*~
