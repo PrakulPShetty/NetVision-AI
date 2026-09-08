@@ -1107,4 +1107,7 @@ Final Attack Recall:
 Final model:
     netvision_final_ensemble_v1.pkl
 
+We also trained and evaluated SVM as a candidate model. Although SVM achieved competitive individual performance, its predictions were highly similar to the selected models and it did not provide additional benefit when considered for ensemble integration. Therefore, SVM was not included in the final ensemble.
+
+
 PHASE 5 STATUS: COMPLETE

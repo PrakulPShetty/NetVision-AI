@@ -1,0 +1,25 @@
+{
+    "forecasting_method": "k-step Markov state forecasting",
+    "state_space": {
+        "0": "BENIGN",
+        "1": "ATTACK"
+    },
+    "window_minutes": 5,
+    "maximum_forecast_steps": 12,
+    "maximum_forecast_minutes": 60,
+    "forecast_categories": {
+        "LOW": "attack probability < 0.3",
+        "MEDIUM": "0.3 <= attack probability < 0.6",
+        "HIGH": "attack probability >= 0.6"
+    },
+    "transition_matrix": [
+        [
+            0.9704225352112676,
+            0.0295774647887323
+        ],
+        [
+            0.068100358422939,
+            0.931899641577061
+        ]
+    ]
+}

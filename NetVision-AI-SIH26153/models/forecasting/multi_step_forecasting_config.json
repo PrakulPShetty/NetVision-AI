@@ -1,0 +1,15 @@
+{
+    "analysis_type": "Multi-step Markov transition analysis",
+    "base_window_minutes": 5,
+    "maximum_steps": 12,
+    "maximum_horizon_minutes": 60,
+    "state_space": {
+        "0": "BENIGN",
+        "1": "ATTACK"
+    },
+    "stationary_distribution": {
+        "BENIGN": 0.6971936534187818,
+        "ATTACK": 0.30280634658121824
+    },
+    "expected_attack_duration_minutes": 73.42105263157897
+}

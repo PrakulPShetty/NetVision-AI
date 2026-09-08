@@ -1,0 +1,23 @@
+{
+    "model_type": "First-order Markov state transition model",
+    "state_space": {
+        "0": "BENIGN",
+        "1": "ATTACK"
+    },
+    "temporal_window_minutes": 5,
+    "transition_definition": "Probability of next 5-minute network state conditioned on current 5-minute network state.",
+    "training_windows": 1008,
+    "valid_consecutive_transitions": 989,
+    "transition_counts": {
+        "BENIGN_to_BENIGN": 689,
+        "BENIGN_to_ATTACK": 21,
+        "ATTACK_to_BENIGN": 19,
+        "ATTACK_to_ATTACK": 260
+    },
+    "transition_probabilities": {
+        "BENIGN_to_BENIGN": 0.9704225352112676,
+        "BENIGN_to_ATTACK": 0.029577464788732393,
+        "ATTACK_to_BENIGN": 0.06810035842293907,
+        "ATTACK_to_ATTACK": 0.931899641577061
+    }
+}

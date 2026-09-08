@@ -1,0 +1,29 @@
+{
+    "phase": "Phase 6 \u2014 Forecasting / World Model",
+    "status": "complete",
+    "finalized_at": "2026-09-08T14:04:37.014266",
+    "model_type": "First-order Markov state-transition model",
+    "state_definition": {
+        "0": "BENIGN",
+        "1": "ATTACK"
+    },
+    "temporal_window_minutes": 5,
+    "primary_forecast_horizon_minutes": 10,
+    "maximum_forecast_horizon_minutes": 60,
+    "transition_matrix": {
+        "BENIGN_to_BENIGN": 0.970423,
+        "BENIGN_to_ATTACK": 0.029577,
+        "ATTACK_to_BENIGN": 0.0681,
+        "ATTACK_to_ATTACK": 0.9319
+    },
+    "primary_10min_metrics": {
+        "accuracy": 0.9206349206349206,
+        "precision": 0.8586572438162544,
+        "recall": 0.8586572438162544,
+        "f1_score": 0.8586572438162544,
+        "roc_auc": 0.9017424150115756,
+        "brier_score": 0.0716067702953575
+    },
+    "important_note": "The World Model is a probabilistic temporal state-transition model rather than a separately trained ML classifier. It models network-state dynamics and supports k-step future-state forecasting.",
+    "integration_status": "Research, modelling, simulation, evaluation, and visualization are complete. Backend integration is part of Phase 7."
+}

@@ -1,0 +1,24 @@
+{
+    "simulation_type": "Monte Carlo future-state simulation",
+    "random_seed": 42,
+    "number_of_simulations": 10000,
+    "forecast_steps": 12,
+    "window_minutes": 5,
+    "maximum_horizon_minutes": 60,
+    "state_space": {
+        "0": "BENIGN",
+        "1": "ATTACK"
+    },
+    "probability_of_any_attack": {
+        "initial_benign": 0.3072,
+        "initial_attack": 0.9552
+    },
+    "average_attack_windows": {
+        "initial_benign": 1.6605,
+        "initial_attack": 8.2679
+    },
+    "average_attack_minutes": {
+        "initial_benign": 8.3025,
+        "initial_attack": 41.339499999999994
+    }
+}
