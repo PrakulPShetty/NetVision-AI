@@ -1,0 +1,80 @@
+{
+  "project": "NetVision AI",
+  "phase": "8.9.1",
+  "component": "Unified XAI + MITRE Output Design",
+  "output_schema": {
+    "project": "NetVision AI",
+    "model_version": "v1",
+    "ml": {
+      "xgb_attack_probability": 0.0,
+      "rf_attack_probability": 0.0,
+      "ensemble_attack_probability": 0.0,
+      "current_state": 0,
+      "current_state_label": "BENIGN"
+    },
+    "world_model": {
+      "current_state": "BENIGN",
+      "forecasts": [
+        {
+          "horizon_minutes": 10,
+          "steps": 2,
+          "future_attack_probability": 0.0,
+          "future_benign_probability": 1.0
+        }
+      ]
+    },
+    "xai": {
+      "method": "Probability-space SHAP",
+      "base_probability": 0.0,
+      "top_positive_factors": [
+        {
+          "feature": "example_feature",
+          "value": 0.0,
+          "shap_contribution": 0.0
+        }
+      ],
+      "top_negative_factors": [
+        {
+          "feature": "example_feature",
+          "value": 0.0,
+          "shap_contribution": 0.0
+        }
+      ],
+      "interpretation_note": "SHAP values represent model contributions and should not be interpreted as causal evidence."
+    },
+    "mitre_attack": {
+      "mapping_status": "Technique candidates identified",
+      "techniques": [
+        {
+          "technique_id": "T1046",
+          "technique_name": "Network Service Discovery",
+          "tactic": "Discovery",
+          "confidence": "Medium",
+          "evidence": [
+            "Example behavioral evidence"
+          ],
+          "supporting_features": [
+            "unique_dst_ports"
+          ],
+          "interpretation": "Observed traffic is consistent with network service discovery behavior.",
+          "limitation": "Network-flow evidence alone cannot establish malicious intent."
+        }
+      ]
+    }
+  },
+  "empty_mitre_output": {
+    "mapping_status": "No confident MITRE mapping identified",
+    "techniques": [],
+    "reason": "Available network-flow evidence was insufficient to support a confident ATT&CK technique mapping."
+  },
+  "integration_principles": [
+    "ML forecasting determines attack probability.",
+    "World Model determines future state probabilities.",
+    "SHAP explains the ML model prediction.",
+    "MITRE ATT&CK interprets observable network behavior.",
+    "SHAP feature contributions must not directly determine MITRE techniques.",
+    "MITRE mappings require behavioral evidence.",
+    "Network-flow evidence does not prove attacker intent.",
+    "Insufficient evidence must produce no confident MITRE mapping."
+  ]
+}

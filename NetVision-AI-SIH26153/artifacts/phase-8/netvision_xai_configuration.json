@@ -1,0 +1,25 @@
+{
+  "method": "SHAP",
+  "explanation_type": "local_feature_level",
+  "output_space": "probability",
+  "models": [
+    "xgboost",
+    "random_forest_smote"
+  ],
+  "ensemble_type": "soft_voting",
+  "ensemble_weights": {
+    "xgboost": 0.5,
+    "random_forest_smote": 0.5
+  },
+  "background_samples": 50,
+  "feature_count": 138,
+  "stability_windows": 20,
+  "selection_reason": "SHAP provides local feature-level explanations and probability-space contributions from both ensemble components can be combined consistently.",
+  "validation": {
+    "xgboost_additivity_passed": true,
+    "random_forest_additivity_passed": true,
+    "ensemble_additivity_passed": true,
+    "ensemble_reconstruction_error": 1.2022241813181012e-08
+  },
+  "interpretation_note": "SHAP values represent model contributions and should not be interpreted as causal evidence."
+}

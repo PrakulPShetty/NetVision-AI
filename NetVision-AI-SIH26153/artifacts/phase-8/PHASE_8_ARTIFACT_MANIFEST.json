@@ -1,0 +1,59 @@
+{
+  "project": "NetVision AI",
+  "phase": "Phase 8",
+  "phase_name": "XAI + MITRE ATT&CK",
+  "status": "FINAL",
+  "artifact_count": 10,
+  "artifacts": [
+    {
+      "name": "XAI configuration",
+      "filename": "netvision_xai_configuration.json",
+      "size_bytes": 848
+    },
+    {
+      "name": "MITRE research",
+      "filename": "netvision_mitre_research.json",
+      "size_bytes": 2821
+    },
+    {
+      "name": "MITRE evidence matrix",
+      "filename": "netvision_mitre_evidence_matrix.json",
+      "size_bytes": 3053
+    },
+    {
+      "name": "MITRE mapping configuration",
+      "filename": "netvision_mitre_mapping_configuration.json",
+      "size_bytes": 4537
+    },
+    {
+      "name": "MITRE architecture",
+      "filename": "netvision_mitre_architecture.json",
+      "size_bytes": 3470
+    },
+    {
+      "name": "MITRE output schema",
+      "filename": "netvision_mitre_output_schema.json",
+      "size_bytes": 929
+    },
+    {
+      "name": "MITRE decision rules",
+      "filename": "netvision_mitre_decision_rules.json",
+      "size_bytes": 2677
+    },
+    {
+      "name": "Unified XAI + MITRE output",
+      "filename": "netvision_unified_xai_mitre_output.json",
+      "size_bytes": 2562
+    },
+    {
+      "name": "XAI + MITRE integration",
+      "filename": "netvision_xai_mitre_integration.json",
+      "size_bytes": 5360
+    },
+    {
+      "name": "Phase 8 final validation",
+      "filename": "netvision_phase8_validation.json",
+      "size_bytes": 458
+    }
+  ]
+}

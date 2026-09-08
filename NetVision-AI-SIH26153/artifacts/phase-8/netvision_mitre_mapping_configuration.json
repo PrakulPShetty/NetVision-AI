@@ -1,0 +1,130 @@
+{
+  "project": "NetVision AI",
+  "phase": "8.7.3",
+  "purpose": "MITRE ATT&CK behavioral mapping",
+  "feature_schema": {
+    "feature_count": 138,
+    "schema_source": "feature_names.json"
+  },
+  "techniques": [
+    {
+      "technique_id": "T1046",
+      "technique_name": "Network Service Discovery",
+      "tactic": "Discovery",
+      "behavior": "Scanning-like network behavior involving repeated connections and increased destination service or protocol diversity.",
+      "required_features": [
+        "unique_dst_ports",
+        "unique_protocols",
+        "flow_count",
+        "total_flow_count"
+      ],
+      "supporting_features": [
+        "Tot Fwd Pkts_sum",
+        "TotLen Fwd Pkts_sum"
+      ],
+      "minimum_required_signals": 2,
+      "confidence_if_matched": "Medium",
+      "limitation": "The observed pattern is consistent with network service discovery but flow data alone cannot establish malicious intent."
+    },
+    {
+      "technique_id": "T1498",
+      "technique_name": "Network Denial of Service",
+      "tactic": "Impact",
+      "behavior": "Abnormally high network activity characterized by large traffic volume, packet volume, flow volume, or packet rate within a concentrated temporal window.",
+      "required_features": [
+        "flow_count",
+        "total_flow_count",
+        "Tot Fwd Pkts_sum",
+        "TotLen Fwd Pkts_sum",
+        "Bwd Pkts/s_mean"
+      ],
+      "supporting_features": [
+        "Flow Duration_max"
+      ],
+      "minimum_required_signals": 3,
+      "confidence_if_matched": "Medium",
+      "limitation": "Large traffic volumes can also occur during legitimate traffic bursts. Network-flow evidence alone does not prove a denial-of-service attack."
+    },
+    {
+      "technique_id": "T1498.001",
+      "technique_name": "Direct Network Flood",
+      "tactic": "Impact",
+      "behavior": "Concentrated high-volume network traffic directed toward a target, characterized by elevated packet volume, byte volume, flow activity, and packet rate.",
+      "required_features": [
+        "flow_count",
+        "total_flow_count",
+        "Tot Fwd Pkts_sum",
+        "TotLen Fwd Pkts_sum",
+        "Bwd Pkts/s_mean"
+      ],
+      "supporting_features": [
+        "Flow Duration_max"
+      ],
+      "minimum_required_signals": 3,
+      "confidence_if_matched": "Low-Medium",
+      "limitation": "Flow-level data may indicate flood-like behavior but cannot independently determine deliberate flooding, attack mechanism, or source distribution."
+    }
+  ],
+  "behavioral_evidence_categories": {
+    "traffic_volume": [
+      "flow_count",
+      "total_flow_count",
+      "Tot Fwd Pkts_sum",
+      "TotLen Fwd Pkts_sum"
+    ],
+    "packet_rate": [
+      "Bwd Pkts/s_mean"
+    ],
+    "destination_diversity": [
+      "unique_dst_ports",
+      "unique_protocols"
+    ],
+    "temporal_concentration": [
+      "Flow Duration_max"
+    ]
+  },
+  "behavioral_reasoning": {
+    "T1046": {
+      "logic": "Destination diversity + repeated flow activity support scanning/discovery-like behavior.",
+      "primary_evidence_categories": [
+        "destination_diversity"
+      ],
+      "secondary_evidence_categories": [
+        "traffic_volume",
+        "temporal_concentration"
+      ]
+    },
+    "T1498": {
+      "logic": "Multiple independent indicators of unusually high network activity support denial-of-service-like behavior.",
+      "primary_evidence_categories": [
+        "traffic_volume",
+        "packet_rate"
+      ],
+      "secondary_evidence_categories": [
+        "temporal_concentration"
+      ]
+    },
+    "T1498.001": {
+      "logic": "High traffic volume and packet-rate evidence combined with temporal concentration support direct flood-like behavior.",
+      "primary_evidence_categories": [
+        "traffic_volume",
+        "packet_rate",
+        "temporal_concentration"
+      ],
+      "secondary_evidence_categories": []
+    }
+  },
+  "design_principles": [
+    "No individual feature directly determines a MITRE technique.",
+    "Multiple traffic signals should support a behavioral mapping.",
+    "Only features present in the finalized 138-feature schema are used.",
+    "MITRE confidence represents evidence strength, not attacker certainty.",
+    "Network-flow telemetry cannot independently prove malicious intent.",
+    "SHAP explanations and MITRE mappings remain separate interpretation layers.",
+    "Insufficient evidence should result in no confident MITRE mapping."
+  ],
+  "schema_validation": {
+    "passed": true,
+    "unavailable_feature_count": 0
+  }
+}

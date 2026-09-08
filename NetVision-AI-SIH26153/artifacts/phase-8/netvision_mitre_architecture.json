@@ -1,0 +1,104 @@
+{
+  "project": "NetVision AI",
+  "phase": "8.8.1",
+  "component": "MITRE ATT&CK Mapping Architecture",
+  "architecture_layers": [
+    {
+      "layer": 1,
+      "name": "Network Traffic Input",
+      "purpose": "Provide network traffic observations used by the NetVision forecasting pipeline."
+    },
+    {
+      "layer": 2,
+      "name": "Temporal Representation",
+      "purpose": "Aggregate network-flow observations into the selected 5-minute temporal representation."
+    },
+    {
+      "layer": 3,
+      "name": "ML Forecasting",
+      "purpose": "Use the XGBoost + Random Forest-SMOTE ensemble to estimate future attack probability."
+    },
+    {
+      "layer": 4,
+      "name": "World Model",
+      "purpose": "Use the current traffic state and transition model to estimate multi-step future attack probabilities."
+    },
+    {
+      "layer": 5,
+      "name": "XAI",
+      "purpose": "Use probability-space SHAP to explain the contribution of model features to the ML prediction."
+    },
+    {
+      "layer": 6,
+      "name": "MITRE ATT&CK Mapping",
+      "purpose": "Interpret observable network behavior as candidate MITRE ATT&CK techniques."
+    },
+    {
+      "layer": 7,
+      "name": "Unified System Output",
+      "purpose": "Combine forecasting, world-model, XAI, and MITRE interpretation into a structured response."
+    }
+  ],
+  "information_flow": [
+    "Network Traffic",
+    "Temporal Representation",
+    "ML Ensemble",
+    "Attack Probability",
+    "Current Traffic State",
+    "World Model Forecast",
+    "Behavioral Evidence",
+    "MITRE ATT&CK Mapping",
+    "SHAP Explanation",
+    "Unified Forecasting Output"
+  ],
+  "interpretation_layers": {
+    "ML": {
+      "question_answered": "What is the predicted probability of a future attack?",
+      "method": "XGBoost + Random Forest-SMOTE"
+    },
+    "World_Model": {
+      "question_answered": "How does the estimated attack state evolve over future time horizons?",
+      "method": "First-order Markov state transition model"
+    },
+    "XAI": {
+      "question_answered": "Why did the ML model make this prediction?",
+      "method": "Probability-space SHAP with weighted ensemble contributions"
+    },
+    "MITRE": {
+      "question_answered": "What known adversarial behavior is the observed traffic pattern consistent with?",
+      "method": "Behavioral network evidence mapping"
+    }
+  },
+  "mitre_scope": [
+    {
+      "technique_id": "T1046",
+      "technique_name": "Network Service Discovery",
+      "tactic": "Discovery"
+    },
+    {
+      "technique_id": "T1498",
+      "technique_name": "Network Denial of Service",
+      "tactic": "Impact"
+    },
+    {
+      "technique_id": "T1498.001",
+      "technique_name": "Direct Network Flood",
+      "tactic": "Impact"
+    }
+  ],
+  "mapping_states": [
+    "Technique candidate identified",
+    "Insufficient evidence",
+    "No confident MITRE mapping identified"
+  ],
+  "design_constraints": [
+    "MITRE mapping must use behavioral evidence.",
+    "Individual ML features must not directly determine a technique.",
+    "Multiple traffic signals should support a technique candidate.",
+    "Only features present in the finalized 138-feature schema may be used.",
+    "MITRE confidence represents evidence strength, not certainty.",
+    "Network-flow telemetry alone cannot prove malicious intent.",
+    "SHAP and MITRE must remain separate interpretation layers.",
+    "Insufficient evidence must not force a technique assignment."
+  ]
+}

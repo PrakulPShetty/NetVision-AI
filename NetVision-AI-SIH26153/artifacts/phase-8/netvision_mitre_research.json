@@ -1,0 +1,50 @@
+[
+  {
+    "technique_id": "T1046",
+    "technique_name": "Network Service Discovery",
+    "tactic": "Discovery",
+    "description": "Adversaries may attempt to get a listing of services running on remote hosts. Network service discovery can involve probing ports, services, or hosts to identify available network services.",
+    "network_observable_behavior": [
+      "Repeated connection attempts",
+      "Multiple destination ports",
+      "Multiple destination hosts",
+      "Rapid probing within a short time window",
+      "High destination-port diversity"
+    ],
+    "netvision_relevance": "Highly relevant because NetVision represents traffic within 5-minute temporal windows and includes connection, destination-port, protocol, packet, and flow-level statistics.",
+    "evidence_limitation": "Flow-level traffic can indicate scanning or discovery-like behavior, but it cannot independently prove malicious intent or identify the exact scanning tool.",
+    "initial_confidence": "Medium"
+  },
+  {
+    "technique_id": "T1498",
+    "technique_name": "Network Denial of Service",
+    "tactic": "Impact",
+    "description": "Adversaries may perform Network Denial of Service to degrade or block the availability of a targeted system or network resource through excessive network activity.",
+    "network_observable_behavior": [
+      "Abnormally high traffic volume",
+      "High packet transmission rate",
+      "Large number of network flows",
+      "High byte volume",
+      "Concentrated traffic over a short temporal interval"
+    ],
+    "netvision_relevance": "Highly relevant because NetVision contains packet-count, byte-volume, packet-rate, flow-count, and temporal aggregation features.",
+    "evidence_limitation": "High traffic volume may also occur during legitimate traffic bursts. Network volume alone cannot prove that a denial-of-service attack is occurring.",
+    "initial_confidence": "Medium"
+  },
+  {
+    "technique_id": "T1498.001",
+    "technique_name": "Direct Network Flood",
+    "tactic": "Impact",
+    "description": "Adversaries may directly send a high volume of network traffic toward a target in an attempt to degrade or disrupt its availability.",
+    "network_observable_behavior": [
+      "High packet rate",
+      "High byte rate",
+      "Large forward traffic volume",
+      "Large number of flows",
+      "Concentrated high-volume traffic"
+    ],
+    "netvision_relevance": "Relevant because NetVision contains temporal traffic volume, packet-rate, flow-count, and duration features that can provide evidence of concentrated network floods.",
+    "evidence_limitation": "Flow features alone may not establish that traffic was deliberately generated as a flood or determine whether the activity originated from one or multiple sources.",
+    "initial_confidence": "Low-Medium"
+  }
+]

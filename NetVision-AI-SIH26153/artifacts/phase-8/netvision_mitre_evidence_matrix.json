@@ -1,0 +1,75 @@
+[
+  {
+    "technique_id": "T1046",
+    "technique_name": "Network Service Discovery",
+    "tactic": "Discovery",
+    "observable_behavior": "Rapid or repeated connections to multiple destination ports, services, or hosts within a temporal window.",
+    "netvision_features": [
+      "unique_dst_ports",
+      "unique_protocols",
+      "flow_count",
+      "total_flow_count"
+    ],
+    "supporting_traffic_signals": [
+      "high destination-port diversity",
+      "rapid connection attempts",
+      "repeated flows within a short window",
+      "multiple service/protocol probes"
+    ],
+    "evidence_strength": "Strong",
+    "mapping_confidence": "Medium",
+    "required_context": "Destination diversity and temporal concentration should be considered together rather than using a single feature.",
+    "limitation": "Network-flow telemetry can indicate scanning-like behavior but cannot independently prove malicious intent or identify the scanning tool."
+  },
+  {
+    "technique_id": "T1498",
+    "technique_name": "Network Denial of Service",
+    "tactic": "Impact",
+    "observable_behavior": "Abnormally high network traffic volume, packet rate, or connection activity concentrated toward a target within a short temporal interval.",
+    "netvision_features": [
+      "flow_count",
+      "total_flow_count",
+      "Tot Fwd Pkts_sum",
+      "TotLen Fwd Pkts_sum",
+      "Fwd Pkts/s_mean",
+      "Bwd Pkts/s_mean"
+    ],
+    "supporting_traffic_signals": [
+      "high packet volume",
+      "high byte volume",
+      "abnormally high packet rate",
+      "large number of flows",
+      "temporal concentration of traffic"
+    ],
+    "evidence_strength": "Moderate-Strong",
+    "mapping_confidence": "Medium",
+    "required_context": "Traffic volume should be evaluated relative to the normal traffic baseline and temporal concentration.",
+    "limitation": "High traffic volume can occur during legitimate traffic bursts, so network volume alone does not prove a denial-of-service attack."
+  },
+  {
+    "technique_id": "T1498.001",
+    "technique_name": "Direct Network Flood",
+    "tactic": "Impact",
+    "observable_behavior": "High-volume network traffic sent directly toward a target over a concentrated time interval.",
+    "netvision_features": [
+      "flow_count",
+      "total_flow_count",
+      "Tot Fwd Pkts_sum",
+      "TotLen Fwd Pkts_sum",
+      "Fwd Pkts/s_mean",
+      "Bwd Pkts/s_mean",
+      "Flow Duration_max"
+    ],
+    "supporting_traffic_signals": [
+      "high packet rate",
+      "high byte rate",
+      "large traffic volume",
+      "short temporal concentration",
+      "large number of flows toward a target"
+    ],
+    "evidence_strength": "Moderate",
+    "mapping_confidence": "Low-Medium",
+    "required_context": "Evidence should indicate concentrated high-volume traffic toward a target rather than merely high overall network activity.",
+    "limitation": "Flow data alone may not establish whether the traffic is intentionally flooding a target or whether the traffic originates from one or multiple sources."
+  }
+]

@@ -1,0 +1,31 @@
+{
+  "mitre_attack": {
+    "mapping_status": "Technique candidates identified",
+    "techniques": [
+      {
+        "technique_id": "T1046",
+        "technique_name": "Network Service Discovery",
+        "tactic": "Discovery",
+        "confidence": "Medium",
+        "evidence": [
+          "High destination-port diversity",
+          "Repeated flow activity"
+        ],
+        "supporting_features": [
+          "unique_dst_ports",
+          "unique_protocols",
+          "flow_count",
+          "total_flow_count"
+        ],
+        "interpretation": "Observed network behavior is consistent with network service discovery activity.",
+        "limitation": "Network-flow evidence alone cannot establish malicious intent."
+      }
+    ],
+    "methodology": {
+      "basis": "Behavioral network evidence",
+      "individual_feature_mapping": false,
+      "network_flow_only": true,
+      "conservative_mapping": true
+    }
+  }
+}

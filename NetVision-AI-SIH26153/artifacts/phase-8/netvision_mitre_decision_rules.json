@@ -1,0 +1,77 @@
+{
+  "project": "NetVision AI",
+  "phase": "8.8.3",
+  "component": "MITRE ATT&CK Behavioral Decision Rules",
+  "feature_count": 138,
+  "behavioral_signal_groups": {
+    "destination_diversity": [
+      "unique_dst_ports",
+      "unique_protocols"
+    ],
+    "traffic_volume": [
+      "flow_count",
+      "total_flow_count",
+      "Tot Fwd Pkts_sum",
+      "TotLen Fwd Pkts_sum"
+    ],
+    "packet_rate": [
+      "Bwd Pkts/s_mean"
+    ],
+    "temporal_concentration": [
+      "Flow Duration_max"
+    ]
+  },
+  "technique_rules": {
+    "T1046": {
+      "technique_name": "Network Service Discovery",
+      "tactic": "Discovery",
+      "evidence_groups": [
+        "destination_diversity",
+        "traffic_volume",
+        "temporal_concentration"
+      ],
+      "minimum_matched_groups": 2,
+      "confidence": "Medium",
+      "interpretation": "Traffic exhibits multiple indicators consistent with network service discovery or scanning-like behavior.",
+      "limitation": "Network-flow evidence can indicate discovery-like activity but cannot independently prove malicious intent."
+    },
+    "T1498": {
+      "technique_name": "Network Denial of Service",
+      "tactic": "Impact",
+      "evidence_groups": [
+        "traffic_volume",
+        "packet_rate",
+        "temporal_concentration"
+      ],
+      "minimum_matched_groups": 3,
+      "confidence": "Medium",
+      "interpretation": "Traffic exhibits multiple indicators of unusually high network activity consistent with denial-of-service-like behavior.",
+      "limitation": "High traffic volume or packet rates may also occur during legitimate traffic bursts."
+    },
+    "T1498.001": {
+      "technique_name": "Direct Network Flood",
+      "tactic": "Impact",
+      "evidence_groups": [
+        "traffic_volume",
+        "packet_rate",
+        "temporal_concentration"
+      ],
+      "minimum_matched_groups": 3,
+      "confidence": "Low-Medium",
+      "interpretation": "Traffic exhibits concentrated high-volume activity consistent with direct network flood behavior.",
+      "limitation": "Flow-level evidence alone cannot establish that traffic was intentionally generated as a flood or determine the exact attack mechanism."
+    }
+  },
+  "mapping_statuses": [
+    "Technique candidates identified",
+    "No confident MITRE mapping identified"
+  ],
+  "design_principles": [
+    "Multiple behavioral signals are required.",
+    "Individual features do not directly determine techniques.",
+    "Only finalized model features are used.",
+    "Insufficient evidence does not force a technique.",
+    "Confidence represents network evidence strength.",
+    "Network-flow evidence does not prove attacker intent."
+  ]
+}

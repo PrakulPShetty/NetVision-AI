@@ -1,0 +1,167 @@
+{
+  "ml": {
+    "xgb_attack_probability": 0.23907944560050964,
+    "rf_attack_probability": 0.45666666666666667,
+    "ensemble_attack_probability": 0.34787305613358815
+  },
+  "xai": {
+    "method": "Probability-space SHAP",
+    "base_probability": 0.40325875299505,
+    "top_positive_factors": [
+      {
+        "feature": "Flow Duration_max",
+        "value": 119999688.0,
+        "shap_contribution": 0.028127350959152753
+      },
+      {
+        "feature": "Fwd Seg Size Min_mean",
+        "value": 18.0575196089576,
+        "shap_contribution": 0.02633370192372491
+      },
+      {
+        "feature": "TotLen Fwd Pkts_sum",
+        "value": 3705402.0,
+        "shap_contribution": 0.021863284809006144
+      },
+      {
+        "feature": "Bwd IAT Min_mean",
+        "value": 75047.49869273616,
+        "shap_contribution": 0.015716655404884032
+      },
+      {
+        "feature": "ECE Flag Cnt_sum",
+        "value": 2888.0,
+        "shap_contribution": 0.011023428201872725
+      },
+      {
+        "feature": "Bwd IAT Mean_max",
+        "value": 67900000.0,
+        "shap_contribution": 0.009082110667509512
+      },
+      {
+        "feature": "RST Flag Cnt_sum",
+        "value": 2888.0,
+        "shap_contribution": 0.008569331707705878
+      },
+      {
+        "feature": "Tot Bwd Pkts_max",
+        "value": 6566.0,
+        "shap_contribution": 0.008330640682834454
+      },
+      {
+        "feature": "Idle Min_mean",
+        "value": 4762557.761736956,
+        "shap_contribution": 0.0057997222841563376
+      },
+      {
+        "feature": "Flow IAT Std_mean",
+        "value": 604775.290370103,
+        "shap_contribution": 0.005727067186371969
+      }
+    ],
+    "top_negative_factors": [
+      {
+        "feature": "Init Bwd Win Byts_mean",
+        "value": 26659.59606315357,
+        "shap_contribution": -0.0318132291491248
+      },
+      {
+        "feature": "Bwd IAT Std_max",
+        "value": 25700000.0,
+        "shap_contribution": -0.025885534602860322
+      },
+      {
+        "feature": "TotLen Fwd Pkts_max",
+        "value": 29348.0,
+        "shap_contribution": -0.019738991673445373
+      },
+      {
+        "feature": "Tot Fwd Pkts_sum",
+        "value": 48029.0,
+        "shap_contribution": -0.015849980169786917
+      },
+      {
+        "feature": "Flow IAT Std_max",
+        "value": 53800000.0,
+        "shap_contribution": -0.01501116629487207
+      },
+      {
+        "feature": "Bwd Pkts/s_mean",
+        "value": 2044.1427153488364,
+        "shap_contribution": -0.014695513390855057
+      },
+      {
+        "feature": "Fwd Pkt Len Mean_max",
+        "value": 438.5,
+        "shap_contribution": -0.01412378464330129
+      },
+      {
+        "feature": "Fwd IAT Max_mean",
+        "value": 6504385.2732749805,
+        "shap_contribution": -0.010167047830219975
+      },
+      {
+        "feature": "Tot Fwd Pkts_mean",
+        "value": 5.459702171194725,
+        "shap_contribution": -0.010050335175732162
+      },
+      {
+        "feature": "Down/Up Ratio_mean",
+        "value": 0.3943389791974537,
+        "shap_contribution": -0.008325973442096492
+      }
+    ],
+    "reconstruction_error": 1.2022241813181012e-08,
+    "interpretation_note": "SHAP values represent model contributions and should not be interpreted as causal evidence."
+  },
+  "mitre_attack": {
+    "mapping_status": "Technique candidates identified",
+    "techniques": [
+      {
+        "technique_id": "T1046",
+        "technique_name": "Network Service Discovery",
+        "tactic": "Discovery",
+        "confidence": "Medium",
+        "matched_evidence_groups": [
+          "destination_diversity",
+          "traffic_volume",
+          "temporal_concentration"
+        ],
+        "evidence_group_count": 3,
+        "required_evidence_group_count": 2,
+        "interpretation": "Traffic exhibits multiple indicators consistent with network service discovery or scanning-like behavior.",
+        "limitation": "Network-flow evidence can indicate discovery-like activity but cannot independently prove malicious intent."
+      },
+      {
+        "technique_id": "T1498",
+        "technique_name": "Network Denial of Service",
+        "tactic": "Impact",
+        "confidence": "Medium",
+        "matched_evidence_groups": [
+          "traffic_volume",
+          "packet_rate",
+          "temporal_concentration"
+        ],
+        "evidence_group_count": 3,
+        "required_evidence_group_count": 3,
+        "interpretation": "Traffic exhibits multiple indicators of unusually high network activity consistent with denial-of-service-like behavior.",
+        "limitation": "High traffic volume or packet rates may also occur during legitimate traffic bursts."
+      },
+      {
+        "technique_id": "T1498.001",
+        "technique_name": "Direct Network Flood",
+        "tactic": "Impact",
+        "confidence": "Low-Medium",
+        "matched_evidence_groups": [
+          "traffic_volume",
+          "packet_rate",
+          "temporal_concentration"
+        ],
+        "evidence_group_count": 3,
+        "required_evidence_group_count": 3,
+        "interpretation": "Traffic exhibits concentrated high-volume activity consistent with direct network flood behavior.",
+        "limitation": "Flow-level evidence alone cannot establish that traffic was intentionally generated as a flood or determine the exact attack mechanism."
+      }
+    ]
+  }
+}
