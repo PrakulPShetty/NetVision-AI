@@ -185,12 +185,16 @@ class MITREAttackMapper:
 
     def _validate_input(
         self,
-        X: pd.DataFrame,
+        X: Any,
     ) -> pd.DataFrame:
 
-        if not isinstance(X, pd.DataFrame):
+        if isinstance(X, dict):
+            X = pd.DataFrame([X])
+        elif isinstance(X, pd.Series):
+            X = pd.DataFrame([X.to_dict()])
+        elif not isinstance(X, pd.DataFrame):
             raise TypeError(
-                "MITRE mapper input must be a pandas DataFrame."
+                "MITRE mapper input must be a pandas DataFrame, Series, or dict."
             )
 
         missing = [

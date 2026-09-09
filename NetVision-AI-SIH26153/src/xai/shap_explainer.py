@@ -32,11 +32,15 @@ class SHAPExplainer:
         self,
         xgb_model: Any,
         rf_model: Any,
-        feature_names: list[str],
+        feature_names: list[str] | None = None,
         xgb_weight: float = 0.5,
         rf_weight: float = 0.5,
         background_data: pd.DataFrame | None = None,
+        background: pd.DataFrame | None = None,
     ) -> None:
+
+        if background_data is None and background is not None:
+            background_data = background
 
         self.xgb_model = xgb_model
         self.rf_model = rf_model

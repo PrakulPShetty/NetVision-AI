@@ -86,6 +86,10 @@ class StateTransitionModel:
         probabilities = self.config.get(
             "transition_probabilities"
         )
+        if probabilities is None:
+            probabilities = self.config.get(
+                "transition_matrix"
+            )
 
         if probabilities is None:
             raise ValueError(
@@ -179,6 +183,35 @@ class StateTransitionModel:
             probabilities,
             dict
         ):
+
+            # -------------------------------------------------
+            # Sub-case 2a: Flat keys ("BENIGN_to_BENIGN", etc.)
+            # -------------------------------------------------
+
+            flat_keys_present = (
+                ("BENIGN_to_BENIGN" in probabilities or "0_to_0" in probabilities)
+                and ("ATTACK_to_ATTACK" in probabilities or "1_to_1" in probabilities)
+            )
+
+            if flat_keys_present:
+                benign_to_benign = probabilities.get("BENIGN_to_BENIGN", probabilities.get("0_to_0"))
+                benign_to_attack = probabilities.get("BENIGN_to_ATTACK", probabilities.get("0_to_1"))
+                attack_to_benign = probabilities.get("ATTACK_to_BENIGN", probabilities.get("1_to_0"))
+                attack_to_attack = probabilities.get("ATTACK_to_ATTACK", probabilities.get("1_to_1"))
+
+                values = [
+                    [benign_to_benign, benign_to_attack],
+                    [attack_to_benign, attack_to_attack]
+                ]
+
+                return np.asarray(
+                    values,
+                    dtype=float
+                )
+
+            # -------------------------------------------------
+            # Sub-case 2b: Nested dictionary / Row keys
+            # -------------------------------------------------
 
             benign_row = (
                 probabilities.get(

@@ -504,7 +504,7 @@ class AttackForecastPipeline:
             SHAPExplainer(
                 xgb_model=self.xgb_model,
                 rf_model=self.rf_model,
-                background=self.shap_background,
+                background_data=self.shap_background,
                 feature_names=self.feature_names,
             )
         )
@@ -709,23 +709,21 @@ class AttackForecastPipeline:
             60
         ]
 
-        world_forecasts = {}
+        world_forecasts_dict = {}
+        world_forecasts_list = []
 
         for minutes in forecast_horizons:
-
             # Phase 6 temporal window = 5 minutes.
-
-            steps = int(
-                minutes / 5
-            )
+            steps = int(minutes / 5)
 
             attack_probability = float(
-                self.world_model
-                .k_step_attack_probability(
+                self.world_model.k_step_attack_probability(
                     current_state=current_attack_state,
                     k=steps
                 )
             )
+
+            benign_probability = float(1.0 - attack_probability)
 
             future_state = (
                 "ATTACK"
@@ -733,16 +731,18 @@ class AttackForecastPipeline:
                 else "BENIGN"
             )
 
-            world_forecasts[
-                f"{minutes}_minutes"
-            ] = {
-
-                "attack_probability":
-                    attack_probability,
-
-                "state":
-                    future_state
+            forecast_item = {
+                "horizon_minutes": minutes,
+                "steps": steps,
+                "future_attack_probability": attack_probability,
+                "future_benign_probability": benign_probability,
+                "attack_probability": attack_probability,
+                "state": future_state,
+                "forecast_state": future_state,
             }
+
+            world_forecasts_list.append(forecast_item)
+            world_forecasts_dict[f"{minutes}_minutes"] = forecast_item
 
         # =====================================================
         # 7. SHAP EXPLANATION
@@ -760,7 +760,7 @@ class AttackForecastPipeline:
 
         mitre_result = (
             self.mitre.map(
-                features
+                feature_df
             )
         )
 
@@ -768,34 +768,29 @@ class AttackForecastPipeline:
         # 9. UNIFIED OUTPUT
         # =====================================================
 
+        ml_result = {
+            "xgb_attack_probability": xgb_probability,
+            "rf_attack_probability": rf_probability,
+            "ensemble_attack_probability": ensemble_probability,
+            "decision_threshold": self.threshold,
+            "predicted_current_state": current_state_name,
+            "current_state": current_attack_state,
+            "current_state_label": current_state_name,
+        }
+
+        world_model_result = {
+            "current_state": current_state_name,
+            "forecasts": world_forecasts_list,
+            "horizons": world_forecasts_dict,
+        }
+
         result = {
-
-            "ml_forecast": {
-
-                "xgb_attack_probability":
-                    xgb_probability,
-
-                "rf_attack_probability":
-                    rf_probability,
-
-                "ensemble_attack_probability":
-                    ensemble_probability,
-
-                "decision_threshold":
-                    self.threshold,
-
-                "predicted_current_state":
-                    current_state_name,
-            },
-
-            "world_model_forecast":
-                world_forecasts,
-
-            "xai":
-                xai_result,
-
-            "mitre_attack":
-                mitre_result,
+            "ml": ml_result,
+            "ml_forecast": ml_result,
+            "world_model": world_model_result,
+            "world_model_forecast": world_forecasts_dict,
+            "xai": xai_result,
+            "mitre_attack": mitre_result,
         }
 
         return result
