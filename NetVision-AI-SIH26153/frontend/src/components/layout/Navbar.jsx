@@ -1,6 +1,7 @@
 import React from 'react';
 import NetVisionLogo from '../common/NetVisionLogo';
 import { 
+  Home, 
   Activity, 
   Network, 
   TrendingUp, 
@@ -11,6 +12,7 @@ import {
 
 export default function Navbar({ activeTab, setActiveTab }) {
   const navItems = [
+    { id: 'landing', label: 'Landing', icon: Home, badge: null },
     { id: 'overview', label: 'Overview', icon: Activity, badge: null },
     { id: 'analysis', label: 'Network Analysis', icon: Network, badge: null },
     { id: 'forecast', label: 'Forecast', icon: TrendingUp, badge: '60M' },
@@ -23,8 +25,8 @@ export default function Navbar({ activeTab, setActiveTab }) {
     <header className="bg-surface-low border-b border-surface-border sticky top-0 z-50 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo & Product Brand */}
-          <div className="cursor-pointer" onClick={() => setActiveTab('overview')}>
+          {/* Official Logo Brand */}
+          <div className="cursor-pointer" onClick={() => setActiveTab('landing')}>
             <NetVisionLogo className="h-9" showText={true} />
           </div>
 
@@ -37,7 +39,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
                 <button
                   key={item.id}
                   onClick={() => setActiveTab(item.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                     isActive
                       ? 'bg-surface-high text-primary border-b-2 border-primary'
                       : 'text-content-secondary hover:text-content-primary hover:bg-surface-container'

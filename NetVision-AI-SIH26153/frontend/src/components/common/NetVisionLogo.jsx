@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { ShieldAlert } from 'lucide-react';
 
-export default function NetVisionLogo({ className = "h-8", showText = true }) {
+export default function NetVisionLogo({ className = "h-9", showText = true }) {
   const [imgError, setImgError] = useState(false);
 
   return (
@@ -9,13 +8,14 @@ export default function NetVisionLogo({ className = "h-8", showText = true }) {
       {!imgError ? (
         <img
           src="/logo.png"
-          alt="NetVision AI"
+          alt="NetVision AI Official Logo"
           className={`${className} object-contain`}
           onError={() => setImgError(true)}
         />
       ) : (
-        <div className="w-8 h-8 rounded bg-primary-dark/20 border border-primary/40 flex items-center justify-center text-primary">
-          <ShieldAlert className="w-5 h-5" />
+        <div className="flex items-center gap-2 font-mono text-primary font-bold text-base">
+          <span>NETVISION</span>
+          <span className="text-content-primary">AI</span>
         </div>
       )}
       {showText && (

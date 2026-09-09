@@ -1,165 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import Header from './components/layout/Header';
-import Sidebar from './components/layout/Sidebar';
-import Footer from './components/layout/Footer';
+import { useEffect, useState } from 'react';
+import { ArrowDownRight, Menu, X } from 'lucide-react';
+import TrafficForm from './components/product/TrafficForm';
+import { CurrentAssessment, ForecastPlot, XaiExplanation, MitreCorrelation } from './components/product/Results';
+import { phaseOneFixture } from './mocks/phase1/mockData';
+import logo from '../netvision updated logo.png';
 
-import OverviewPage from './pages/OverviewPage';
-import TrafficInputForm from './components/analysis/TrafficInputForm';
-import TopologyGraph from './components/network/TopologyGraph';
-import ForecastTimeline from './components/forecast/ForecastTimeline';
-import SHAPExplainerView from './components/xai/SHAPExplainerView';
-import MitreAttackView from './components/mitre/MitreAttackView';
-import AboutPage from './pages/AboutPage';
-
-import { getHealthStatus, submitTrafficForecast } from './services/api';
-import { TRAFFIC_PRESETS } from './utils/presets';
-import { AlertTriangle, RefreshCw, Loader2, CheckCircle2 } from 'lucide-react';
+const nav = [['HOME','home'],['ANALYZE','analyze'],['FORECAST','forecast'],['EXPLAIN','explain'],['ATT&CK','attack'],['ABOUT','about']];
+const go = (id) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+const Mark = () => <img className="brand-mark" src={logo} alt="NetVision AI" />;
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [forecastData, setForecastData] = useState(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisStep, setAnalysisStep] = useState('');
-  const [backendHealth, setBackendHealth] = useState(null);
-  const [errorMessage, setErrorMessage] = useState(null);
-
-  // Check health and run initial baseline forecast on app launch
-  useEffect(() => {
-    async function initApp() {
-      const health = await getHealthStatus();
-      setBackendHealth(health);
-
-      // Perform initial forecast with Nominal preset
-      runForecast(TRAFFIC_PRESETS[0].data, false);
-    }
-    initApp();
-  }, []);
-
-  // Submit forecast to FastAPI backend with processing transition stages
-  const runForecast = async (trafficInput, showTransition = true) => {
-    setErrorMessage(null);
-
-    if (showTransition) {
-      setIsAnalyzing(true);
-      const stages = [
-        'INGESTING TRAFFIC TELEMETRY',
-        'BUILDING TEMPORAL STATE REPRESENTATION',
-        'RUNNING XGBOOST + RF-SMOTE ENSEMBLE',
-        'EXECUTING MARKOV WORLD MODEL (+60M)',
-        'COMPUTING PROBABILITY-SPACE SHAP',
-        'CORRELATING MITRE ATT&CK BEHAVIOR'
-      ];
-
-      for (let i = 0; i < stages.length; i++) {
-        setAnalysisStep(stages[i]);
-        await new Promise((res) => setTimeout(res, 180));
-      }
-    }
-
-    const res = await submitTrafficForecast(trafficInput);
-
-    if (res.success) {
-      setForecastData(res.data);
-    } else {
-      setErrorMessage(res.error || 'Forecast processing failed.');
-    }
-
-    setIsAnalyzing(false);
-    setAnalysisStep('');
-  };
-
-  // Render main view based on active tab
-  const renderActiveView = () => {
-    if (errorMessage) {
-      return (
-        <div className="bg-surface-lowest p-8 border border-error/40 rounded flex flex-col items-center justify-center text-center my-6">
-          <AlertTriangle className="w-12 h-12 text-error mb-3" />
-          <h3 className="text-base font-bold font-mono text-on-surface uppercase">Forecast Engine Error</h3>
-          <p className="text-xs font-mono text-error mt-2 max-w-md">{errorMessage}</p>
-          <button
-            onClick={() => runForecast(TRAFFIC_PRESETS[0].data, true)}
-            className="mt-4 px-4 py-2 bg-surface-high hover:bg-surface-variant text-on-surface font-mono text-xs rounded border border-outline-variant/40 flex items-center gap-2"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Retry Forecast Request</span>
-          </button>
-        </div>
-      );
-    }
-
-    switch (activeTab) {
-      case 'overview':
-        return <OverviewPage forecastData={forecastData} onNavigate={setActiveTab} />;
-
-      case 'analysis':
-        return (
-          <div className="flex flex-col gap-6">
-            <TrafficInputForm onAnalyze={(data) => runForecast(data, true)} isAnalyzing={isAnalyzing} />
-            {forecastData && (
-              <div className="mt-4 flex flex-col gap-6">
-                <div className="flex items-center justify-between pb-2 border-b border-outline-variant/30">
-                  <h3 className="font-mono text-xs font-bold text-primary uppercase">INFERENCE RESULTS DECK</h3>
-                  <span className="font-mono text-[10px] text-outline">UPDATED VIA LIVE BACKEND</span>
-                </div>
-                <ForecastTimeline forecastData={forecastData} />
-                <SHAPExplainerView forecastData={forecastData} />
-                <MitreAttackView forecastData={forecastData} />
-              </div>
-            )}
-          </div>
-        );
-
-      case 'simulation':
-        return <TopologyGraph forecastData={forecastData} />;
-
-      case 'forecast':
-        return <ForecastTimeline forecastData={forecastData} />;
-
-      case 'xai':
-        return <SHAPExplainerView forecastData={forecastData} />;
-
-      case 'mitre':
-        return <MitreAttackView forecastData={forecastData} />;
-
-      case 'about':
-        return <AboutPage />;
-
-      default:
-        return <OverviewPage forecastData={forecastData} onNavigate={setActiveTab} />;
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-background text-on-surface flex flex-col font-sans">
-      {/* Top Header */}
-      <Header backendHealth={backendHealth} isAnalyzing={isAnalyzing} />
-
-      {/* Navigation Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-
-      {/* Main Operational Workspace */}
-      <div className="pl-60 pt-14 pb-12 flex-1 flex flex-col">
-        <main className="flex-1 p-6 w-full max-w-7xl mx-auto">
-          {/* Processing Transition Overlay */}
-          {isAnalyzing && (
-            <div className="mb-6 p-4 bg-surface-lowest border border-primary/40 rounded flex items-center justify-between font-mono text-xs shadow-lg animate-pulse">
-              <div className="flex items-center gap-3">
-                <Loader2 className="w-5 h-5 text-primary animate-spin" />
-                <div>
-                  <span className="text-primary font-bold block">{analysisStep}</span>
-                  <span className="text-[10px] text-outline">FastAPI Pipeline Execution in Progress</span>
-                </div>
-              </div>
-              <span className="text-secondary font-semibold">STAGE 100% IN-FLIGHT</span>
-            </div>
-          )}
-
-          {renderActiveView()}
-        </main>
-      </div>
-
-      {/* Bottom Status Bar */}
-      <Footer forecastData={forecastData} />
-    </div>
-  );
+  const [active, setActive] = useState('home'), [menu, setMenu] = useState(false), [status, setStatus] = useState('ready'), [result, setResult] = useState(null);
+  useEffect(() => { const o = new IntersectionObserver((entries) => { const item = entries.filter(e => e.isIntersecting).sort((a,b) => b.intersectionRatio-a.intersectionRatio)[0]; if(item) setActive(item.target.id); }, { rootMargin: '-35% 0px -50% 0px', threshold: [.05,.25] }); nav.forEach(([,id]) => { const e=document.getElementById(id); if(e)o.observe(e); }); return () => o.disconnect(); }, []);
+  async function analyse(values) { setStatus('analyzing'); setResult(null); await new Promise(resolve => setTimeout(resolve, 900)); setResult({ ...phaseOneFixture, submittedTraffic: values }); setStatus('complete'); setTimeout(() => go('forecast'), 80); }
+  const navigate = (id) => { setMenu(false); go(id); };
+  return <div className="app-shell">
+    <header className="site-header"><button className="brand" aria-label="NetVision AI home" onClick={() => navigate('home')}><Mark /></button><nav className="desktop-nav" aria-label="Primary navigation">{nav.map(([label,id]) => <button key={id} className={active===id?'active':''} onClick={() => navigate(id)}>{label}</button>)}</nav><button className="menu-button" aria-label="Toggle navigation" onClick={() => setMenu(!menu)}>{menu?<X size={21}/>:<Menu size={21}/>}</button>{menu&&<nav className="mobile-nav">{nav.map(([label,id])=><button key={id} onClick={()=>navigate(id)}>{label}</button>)}</nav>}</header>
+    <main>
+      <section id="home" className="hero section-anchor"><div className="hero-copy"><p className="eyebrow">Predictive network security intelligence</p><h1>See beyond the traffic<br />observed now.</h1><p className="hero-description">NetVision AI analyzes network traffic, assesses the current security state, and forecasts how that state may evolve over time.</p><div className="hero-actions"><button className="button primary" onClick={()=>navigate('analyze')}>Analyze network <ArrowDownRight size={17}/></button><button className="text-button" onClick={()=>navigate('about')}>How it works <ArrowDownRight size={16}/></button></div></div><div className="temporal-visual" aria-hidden="true"><div className="axis-label axis-top">OBSERVATION WINDOW</div><svg viewBox="0 0 620 360"><defs><linearGradient id="fade" x1="0" x2="1"><stop stopColor="#789983" stopOpacity=".1"/><stop offset="1" stopColor="#789983" stopOpacity=".7"/></linearGradient></defs><path className="gridline" d="M35 70H590M35 140H590M35 210H590M35 280H590"/><path className="gridline vertical" d="M130 36V308M260 36V308M390 36V308M520 36V308"/><path className="data-area" d="M35 245 C80 220 95 266 130 238 S186 184 220 215 S288 246 325 177 S395 90 430 142 S490 205 525 106 S565 86 590 61 L590 308 L35 308Z"/><path className="data-line" d="M35 245 C80 220 95 266 130 238 S186 184 220 215 S288 246 325 177 S395 90 430 142 S490 205 525 106 S565 86 590 61"/><circle cx="430" cy="142" r="5"/><circle cx="525" cy="106" r="5"/></svg><div className="axis-label axis-bottom">TEMPORAL SIGNAL →</div></div></section>
+      <section className="workflow" aria-label="Product workflow">{['Observe','Assess','Forecast','Explain','Correlate'].map((step,i)=><div className="workflow-step" key={step}><span>0{i+1}</span><strong>{step}</strong>{i<4&&<i>→</i>}</div>)}</section>
+      <section id="analyze" className="analysis-section section-anchor"><div className="section-intro"><p className="eyebrow">Input</p><h2>Analyze network traffic</h2><p>Provide a 5-minute traffic profile to generate a security forecast.</p></div><div className="analysis-layout"><TrafficForm onSubmit={analyse} status={status}/><aside className={`readiness ${status}`}><span className="readiness-dot"/><p className="eyebrow">{status==='complete'?'Results available':status==='analyzing'?'Analyzing profile':'Ready for analysis'}</p><h3>{status==='complete'?'Forecast prepared.':status==='analyzing'?'Preparing the forecast…':'A practical input surface.'}</h3><p>{status==='complete'?'This Phase 1 view is populated with an isolated development fixture until backend integration begins.':'Submit a 5-minute network traffic profile to generate a forecast.'}</p>{status==='complete'&&<button className="text-button" onClick={()=>navigate('forecast')}>View forecast <ArrowDownRight size={16}/></button>}</aside></div></section>
+      <section id="forecast" className="results-section section-anchor"><div className="section-intro split-intro"><div><p className="eyebrow">Forecast</p><h2>Future security state</h2></div><p>NetVision AI estimates how the security state may evolve across multiple future time horizons.</p></div>{result?<><CurrentAssessment assessment={result.assessment}/><ForecastPlot forecast={result.forecast} threshold={result.decisionThreshold}/></>:<Empty label="Forecast unavailable" text="Complete an analysis to activate the current assessment and future probability forecast."/>}</section>
+      <section id="explain" className="explain-section section-anchor"><div className="section-intro"><p className="eyebrow">Explainability</p><h2>Why this forecast?</h2></div>{result?<XaiExplanation xai={result.xai}/>:<Empty label="Explanation unavailable" text="Contributing signals and their visual explanation will appear with an analysis result."/>}</section>
+      <section id="attack" className="attack-section section-anchor"><div className="section-intro split-intro"><div><p className="eyebrow">Behavioral context</p><h2>MITRE ATT&CK correlation</h2></div><p>Where sufficient behavioral evidence is present, NetVision AI correlates observed traffic characteristics with relevant MITRE ATT&CK techniques.</p></div>{result?<MitreCorrelation correlation={result.mitre}/>:<Empty label="No correlation to display" text="ATT&CK correlation is evaluated only after a traffic profile has been analyzed."/>}</section>
+      <section id="about" className="about-section section-anchor"><div className="about-lead"><p className="eyebrow">About NetVision AI</p><h2>Security should not<br />stop at detection.</h2><p>Network security traditionally focuses on understanding what is happening in the traffic being observed.</p><p>NetVision AI takes that observation one step further — toward <em>forecasting.</em></p><p className="about-detail">NetVision AI analyzes a 5-minute network traffic profile to estimate the current security state, then uses temporal state modelling to project how that state may evolve across future time horizons.</p></div><div className="about-story"><p><span>01 — Observe</span> Network traffic provides the evidence through flow-level traffic characteristics and network statistics.</p><p><span>02 — Assess</span> An ensemble of machine-learning models estimates whether the observed traffic is currently in a benign or attack state and produces an attack probability.</p><p><span>03 — Forecast</span> The temporal world model uses observed security-state dynamics to estimate future attack-state probabilities across 10, 20, 30, 45 and 60-minute horizons.</p><p><span>04 — Explain</span> The explainability layer identifies the traffic signals that contributed to the forecast and presents them through human-readable explanations and SHAP-based contributions.</p><p><span>05 — Correlate</span> Where sufficient behavioral evidence exists, the system correlates observed traffic characteristics with relevant MITRE ATT&CK techniques.</p></div><strong className="about-closing">From observing network traffic to understanding where its security state may be heading.</strong></section>
+    </main><footer><Mark/><span>Predictive network security intelligence</span><span>Phase 1 product interface</span></footer>
+  </div>;
 }
+function Empty({label,text}) { return <div className="empty-result"><span className="empty-line"/><div><p className="eyebrow">{label}</p><p>{text}</p></div></div>; }
