@@ -31,6 +31,7 @@ export const TRAFFIC_PRESETS = [
       fin_flag_cnt: 12,
       psh_flag_cnt: 45,
       urg_flag_cnt: 0,
+      down_up_ratio: 1.5,
     }
   },
   {
@@ -57,6 +58,7 @@ export const TRAFFIC_PRESETS = [
       fin_flag_cnt: 5,
       psh_flag_cnt: 12,
       urg_flag_cnt: 0,
+      down_up_ratio: 0.53,
     }
   },
   {
@@ -83,6 +85,7 @@ export const TRAFFIC_PRESETS = [
       fin_flag_cnt: 0,
       psh_flag_cnt: 0,
       urg_flag_cnt: 0,
+      down_up_ratio: 0.01,
     }
   }
 ];

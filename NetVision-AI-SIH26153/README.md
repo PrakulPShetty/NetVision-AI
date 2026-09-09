@@ -1,612 +1,343 @@
-# NetVision-AI-SIH26153
-AI based Network Attack Forecasting from Network Traffic Data — SIH26153
+# NetVision AI — AI-Based Network Attack Forecasting System
+
+**Problem Statement ID:** SIH26153  
+**Problem Statement:** AI-Based Network Attack Forecasting from Network Traffic Data  
+**Theme:** Blockchain & Cybersecurity  
+**Category:** Software (Smart India Hackathon 2026)  
+
+---
+
+## 1. Project Overview
+
+**NetVision AI** is a next-generation predictive network security intelligence platform. Traditional Intrusion Detection Systems (IDS) operate reactively by asking:  
+> *"Is an attack happening right now?"*
+
+NetVision AI shifts the security paradigm from reactive detection to **proactive temporal forecasting**, asking:  
+> *"Based on current network flow dynamics and historical state transitions, is an attack likely to escalate in the next 10 to 60 minutes?"*
+
+The system processes 15 operational network flow attributes, expands them into 138 engineered features using a runtime feature transformer, evaluates current threat status via an **XGBoost + Random Forest-SMOTE Ensemble**, projects future threat progression using a **Discrete-Time Markov World Model**, explains key risk drivers via **SHAP (SHapley Additive exPlanations)**, and maps predicted attack patterns to actionable **MITRE ATT&CK** tactics and techniques.
+
+---
+
+## 2. Key Capabilities
+
+- **15-Field Practical Input Surface**: Operational network flow parameters (packets, bytes, flow rates, flag counts, distinct ports/protocols) mapped live to model features.
+- **Runtime Feature Engineering**: Automated 138-feature expansion calculating packet/byte ratios, flow rates, flag densities, and statistical moments without raw PCAP overhead.
+- **XGBoost + Random Forest-SMOTE Ensemble**: Calibrated ensemble classifier operating at a optimal `0.40` decision threshold for maximum recall on minority attack classes.
+- **Discrete-Time Markov World Model**: Multi-horizon predictive state modeling across **10m, 20m, 30m, 45m, and 60m** timeframes across 5 discrete threat states (`BENIGN`, `RECONNAISSANCE`, `EXPLOITATION`, `LATERAL_MOVEMENT`, `DENIAL_OF_SERVICE`).
+- **Explainable AI (SHAP)**: Real-time calculation of positive and negative feature attribution scores to explain model predictions to SOC analysts.
+- **MITRE ATT&CK Alignment**: Dynamic correlation mapping predicted attack vectors to industry-standard Tactics (e.g., *Impact*, *Reconnaissance*) and Techniques (e.g., *T1498 - Network Denial of Service*, *T1595 - Active Scanning*).
+- **Modern Interactive Dashboard**: High-contrast, responsive React interface built with custom glassmorphism design system, interactive Recharts visualization, and dynamic API synchronization.
+
+---
+
+## 3. System Architecture
+
+```
+                    ┌─────────────────────────────────────────┐
+                    │          React 18 Web Dashboard         │
+                    │        (Vite + Custom CSS + Recharts)   │
+                    └────────────────────┬────────────────────┘
+                                         │ HTTP POST /forecast
+                                         ▼
+                    ┌─────────────────────────────────────────┐
+                    │             FastAPI Backend             │
+                    │         (Uvicorn + Pydantic v2)         │
+                    └────────────────────┬────────────────────┘
+                                         │ 15 Flow Inputs
+                                         ▼
+                    ┌─────────────────────────────────────────┐
+                    │       Runtime Feature Transformer       │
+                    │   (Expands 15 inputs to 138 features)   │
+                    └────────────────────┬────────────────────┘
+                                         │ 138 Features
+                                         ▼
+                    ┌─────────────────────────────────────────┐
+                    │   XGBoost + RF-SMOTE Ensemble Model   │
+                    │      (Calibrated Threshold: 0.40)       │
+                    └─────────┬──────────────────────┬────────┘
+                              │                      │
+       Current Threat State   │                      │ Feature Matrix
+                              ▼                      ▼
+           ┌──────────────────────┐      ┌──────────────────────┐
+           │  Markov World Model  │      │  SHAP XAI Engine     │
+           │ (10m–60m Horizons)   │      │ (Feature Attribution)│
+           └──────────┬───────────┘      └───────────┬──────────┘
+                      │                              │
+                      └──────────────┬───────────────┘
+                                     │ Forecast + SHAP Scores
+                                     ▼
+                    ┌─────────────────────────────────────────┐
+                    │      MITRE ATT&CK Correlation Engine    │
+                    │   (Maps vector to Tactics & Tech IDs)   │
+                    └────────────────────┬────────────────────┘
+                                         │ Unified Response
+                                         ▼
+                    ┌─────────────────────────────────────────┐
+                    │ React UI State Render (No Static Mocks) │
+                    └─────────────────────────────────────────┘
+```
+
+---
+
+## 4. Technology Stack
+
+| Layer | Technologies & Libraries |
+| :--- | :--- |
+| **Frontend** | React 18, Vite, Recharts, Lucide React, Custom Glassmorphism CSS |
+| **Backend Framework** | Python 3.13, FastAPI, Uvicorn, Pydantic v2, Pytest |
+| **Machine Learning** | Scikit-learn, XGBoost, Imbalanced-learn (SMOTE), Joblib, NumPy, Pandas |
+| **Explainability (XAI)** | SHAP (SHapley Additive exPlanations) |
+| **Security Framework** | MITRE ATT&CK v14 Knowledge Base Mapping |
+| **Testing & CI** | Pytest, Vite Build Validator |
+
+---
+
+## 5. Machine Learning Pipeline & Dataset
+
+### Dataset: CIC-IDS2018
+The models were trained and validated on the benchmark **CIC-IDS2018** network intrusion dataset, capturing diverse traffic conditions across benign state operations, Reconnaissance (Port Scans), Exploitation, and Denial of Service (DoS/DDoS) scenarios.
+
+### Feature Engineering (`RuntimeFeatureTransformer`)
+The input interface collects 15 core telemetry attributes:
+1. `flow_count`: Active concurrent flows
+2. `unique_dst_ports`: Distinct target ports contacted
+3. `unique_protocols`: Distinct IP protocols observed
+4. `forward_packets`: Total packets sent forward
+5. `forward_bytes`: Total payload bytes sent forward
+6. `backward_packets`: Total packets received backward
+7. `backward_bytes`: Total payload bytes received backward
+8. `flow_duration`: Flow duration (microseconds)
+9. `flow_bytes_per_sec`: Data throughput rate
+10. `flow_packets_per_sec`: Packet transmission rate
+11. `backward_packets_per_sec`: Return packet rate
+12. `syn_flag_cnt`: SYN flag frequency
+13. `ack_flag_cnt`: ACK flag frequency
+14. `rst_flag_cnt`: RST flag frequency
+15. `fin_flag_cnt`: FIN flag frequency
 
+The runtime transformer dynamically computes 123 derived statistics (mean packet sizes, flag ratios, flow ratios, header density metrics) to construct the complete **138-feature vector** expected by the pre-trained ML models.
 
-Smart India Hackathon 2026
-1. Project Overview
+### Model Architecture
+- **XGBoost Classifier**: Optimized gradient boosting tree model trained on log-loss objective.
+- **Random Forest with SMOTE**: Random Forest classifier trained on oversampled minority attack instances to handle extreme class imbalance.
+- **Ensemble Fusion**: Weighted probability averaging between XGBoost and RF-SMOTE.
+- **Decision Threshold**: Calibrated at `0.40`. Probabilities $\ge 0.40$ classify the network state as `ATTACK` (or specific attack sub-types), ensuring high sensitivity for security threats.
 
-NetVision-AI-SIH26153 is an AI/ML-based cybersecurity system designed to forecast potential network attacks from network traffic data.
+---
 
-The project focuses on moving beyond conventional intrusion detection, which primarily answers:
+## 6. Temporal Markov World Model
 
-"Is an attack happening now?"
+The system incorporates a **Discrete-Time Markov Chain (DTMC)** transition matrix trained on sequential network window transitions:
 
-Our objective is to investigate:
+$$P_{ij} = P(S_{t+1} = j \mid S_t = i)$$
 
-"Based on the current and previous network states, is an attack likely to occur in the future?"
+Where state space $S \in \{\text{BENIGN}, \text{RECONNAISSANCE}, \text{EXPLOITATION}, \text{LATERAL\_MOVEMENT}, \text{DENIAL\_OF\_SERVICE}\}$.
 
-The system therefore studies the temporal behaviour of network traffic, models changes in network state, predicts future states, and generates an explainable attack forecast.
-
-
-2. Problem Statement
-
-Problem Statement ID: SIH26153
-
-Problem Statement: AI based Network Attack Forecasting from Network Traffic Data
+Given initial state distribution $\pi(t)$ derived from current ML ensemble confidence scores, future probabilities for horizon $h \in \{10\text{m}, 20\text{m}, 30\text{m}, 45\text{m}, 60\text{m}\}$ are computed via matrix exponentiation:
 
-Theme: Blockchain & Cybersecurity
+$$\pi(t + h) = \pi(t) \cdot P^{k_h}$$
 
-Category: Software
+This allows NetVision AI to output probabilistic forecasting timelines showing how threat risk evolves over time.
 
-The proposed system aims to analyse network traffic and learn evolving network behaviour to forecast possible future attacks.
+---
 
+## 7. Explainable AI & MITRE ATT&CK Integration
 
-3. Project Objective
+### SHAP Feature Attribution
+For every inference request, the SHAP engine calculates feature impact values relative to background traffic distribution (`shap_background.csv`). The top positive drivers (increasing attack risk) and negative drivers (stabilizing factors) are formatted into human-readable explanations.
 
-The primary objectives of the project are:
+### MITRE ATT&CK Mapping
+Detected attack behaviors are automatically cross-referenced against MITRE ATT&CK techniques:
+- **Denial of Service (`DENIAL_OF_SERVICE`)**: Mapped to **T1498** (Network Denial of Service) under *Impact*.
+- **Reconnaissance (`RECONNAISSANCE`)**: Mapped to **T1595** (Active Scanning) under *Reconnaissance*.
+- **Exploitation (`EXPLOITATION`)**: Mapped to **T1190** (Exploit Public-Facing Application) under *Initial Access*.
+- **Lateral Movement (`LATERAL_MOVEMENT`)**: Mapped to **T1021** (Remote Services) under *Lateral Movement*.
 
-Analyse network traffic data.
-Extract and process relevant network features.
-Represent network traffic in a temporal form.
-Identify the current network state.
-Investigate state-transition behaviour.
-Predict future network states.
-Forecast the probability of an upcoming network attack.
-Investigate multi-step/K-step forecasting where feasible.
-Map predicted attack behaviour to relevant MITRE ATT&CK stages/techniques where supported.
-Provide explainable predictions using SHAP.
-Compare baseline, individual ML models, and ensemble approaches.
-Develop an offline working prototype with a web dashboard and REST API.
+---
 
+## 8. Repository Structure
 
-4. Core Idea
-
-The project follows the concept:
-
-Network Traffic
-       ↓
-Data Preprocessing
-       ↓
-Feature Engineering
-       ↓
-Temporal Representation
-       ↓
-Current Network State
-       ↓
-State Transition Modelling
-       ↓
-Future-State Prediction
-       ↓
-Attack Forecasting
-       ↓
-MITRE ATT&CK Mapping
-       ↓
-SHAP / XAI
-       ↓
-REST API
-       ↓
-Web Dashboard
-
-The central research direction is temporal network attack forecasting, rather than only static attack detection.
-
-
-5. Proposed System
-
-The system will process network traffic records and transform them into a representation that captures how network behaviour changes over time.
-
-The general workflow is:
-
-Input Network Traffic
-        ↓
-Dataset Investigation
-        ↓
-Data Cleaning
-        ↓
-Feature Processing
-        ↓
-Feature Engineering
-        ↓
-Temporal Ordering
-        ↓
-Time Window / Sequence Construction
-        ↓
-Current Network State
-        ↓
-ML Model Experiments
-        ↓
-Ensemble Experiments
-        ↓
-State Transition Modelling
-        ↓
-Future-State Prediction
-        ↓
-Attack Forecast
-        ↓
-MITRE ATT&CK Mapping
-        ↓
-SHAP Explanation
-        ↓
-REST API
-        ↓
-Web Dashboard
-
-The exact temporal representation, forecasting horizon, state-transition technique, and final ensemble architecture will be determined through research and experimentation.
-
-
-6. Machine Learning Direction
-
-The project will investigate multiple machine learning approaches.
-
-Baseline
-
-Logistic Regression will be used as a reference baseline.
-
-Individual Models
-
-Candidate models may include:
-
-Decision Tree
-Random Forest
-Extra Trees
-XGBoost
-LightGBM
-Other suitable models identified during experimentation
-Ensemble Learning
-
-Ensemble modelling is an important direction of the project.
-
-Different ensemble approaches will be experimentally evaluated before selecting the final approach.
-
-The final model will be selected based on experimental evidence rather than assuming a particular algorithm in advance.
-
-
-7. Temporal Forecasting
-
-Temporal modelling is a core component of the project.
-
-The intended concept is:
-
-S(t-2) → S(t-1) → S(t)
-                  ↓
-          State Transition
-                  ↓
-               S(t+1)
-                  ↓
-               S(t+2)
-                  ↓
-          Attack Forecast
-
-Where:
-
-S(t) represents the current network state.
-Previous states provide historical context.
-The transition process models how the network state evolves.
-Future states are predicted.
-The predicted future behaviour is used for attack forecasting.
-
-The exact:
-
-temporal window,
-sequence length,
-state representation,
-transition method,
-forecasting horizon
-
-will be determined experimentally.
-
-
-8. Explainable AI
-
-Explainability is an important part of the system.
-
-SHAP will be investigated to identify the network traffic features contributing to model predictions.
-
-Conceptually:
-
-Future Attack Forecast
-          ↓
-      SHAP Analysis
-          ↓
-Important Contributing Features
-          ↓
-Human-Readable Explanation
-
-The system should provide not only an attack forecast but also an explanation of the important features contributing to that forecast.
-
-
-9. MITRE ATT&CK Integration
-
-The project will investigate mapping predicted attack behaviour to relevant MITRE ATT&CK stages or techniques where the available evidence supports such mapping.
-
-The intended concept is:
-
-Predicted Network Behaviour
-          ↓
-Attack Behaviour Analysis
-          ↓
-MITRE ATT&CK Mapping
-          ↓
-Likely Stage / Technique
-
-Mappings will not be fabricated when the available traffic data or model output cannot reliably support them.
-
-
-10. Dataset
-Primary Dataset
-
-CIC-IDS2018
-
-The dataset will be investigated for:
-
-Network traffic features
-Labels
-Timestamps
-Attack scenarios
-Class distribution
-Missing values
-Duplicate records
-Feature types
-Temporal ordering
-Attack progression
-Suitability for forecasting
-Secondary Dataset
-
-CTU-13 may be investigated for additional validation or generalization if required.
-
-The final dataset usage will depend on the results of dataset investigation and experimentation.
-
-
-11. Input and Output
-Input
-
-The initial prototype is intended to work with network traffic data such as:
-
-CSV flow records
-
-PCAP processing may be investigated and implemented if required.
-
-Expected Output
-
-The system aims to provide:
-
-Current network state
-Future predicted state
-Attack probability
-Forecast timeline
-Predicted attack behaviour/type where supported
-Relevant MITRE ATT&CK stage/technique where supported
-Important contributing network features
-SHAP-based explanation
-
-
-12. Technology Stack
-Data and Scientific Computing
-Python
-NumPy
-Pandas
-SciPy
-
-Machine Learning
-Scikit-learn
-XGBoost
-LightGBM
-
-Explainable AI
-SHAP
-
-Visualization
-Matplotlib
-Seaborn
-
-Model Serialization
-Joblib
-
-Pickle where appropriate
-Backend and REST API
-FastAPI
-Uvicorn
-REST API
-Frontend
-Web-based dashboard
-Development and Version Control
-Visual Studio Code
-Git
-GitHub
-ML Compute
-Google Colab
-Processed Dataset Storage
-Hugging Face Dataset Repository
-
-
-13. Development Architecture
-
-The project follows a research-to-engineering workflow:
-
-Research
-   ↓
-Understand
-   ↓
-Experiment
-   ↓
-Validate
-   ↓
-Decide
-   ↓
-Implement
-   ↓
-Evaluate
-   ↓
-Integrate
-   ↓
-Demonstrate
-
-Heavy ML experimentation will be performed using Google Colab.
-
-GitHub will contain the project source code, scripts, tests, documentation, and configuration.
-
-Processed and ML-ready datasets may be stored and accessed through Hugging Face.
-
-
-
-14. Frontend–Backend Architecture
-
-The frontend will communicate with the backend through REST APIs.
-
-┌─────────────────────┐
-│      Frontend       │
-│    Web Dashboard    │
-└──────────┬──────────┘
-           │
-           │ REST API / HTTP
-           ↓
-┌─────────────────────┐
-│    FastAPI Backend  │
-└──────────┬──────────┘
-           │
-           ↓
-┌─────────────────────┐
-│   Backend Services  │
-│                     │
-│ Preprocessing       │
-│ Feature Processing  │
-│ Forecasting         │
-│ XAI                 │
-└──────────┬──────────┘
-           │
-           ↓
-┌─────────────────────┐
-│ ML / Forecasting    │
-│ Pipeline            │
-└─────────────────────┘
-
-The exact API routes and backend service architecture will be finalized after the ML input/output format is established.
-
-
-15. Repository Structure
+```
 NetVision-AI-SIH26153/
-│
-├── README.md
-├── requirements.txt
-├── .gitignore
-│
-├── data/
-│   ├── raw/
-│   │   └── README.md
-│   ├── interim/
-│   │   └── README.md
-│   └── processed/
-│       └── README.md
-│
-├── src/
-│   ├── data/
-│   ├── preprocessing/
-│   ├── features/
-│   ├── temporal/
-│   ├── models/
-│   ├── transition/
-│   ├── forecasting/
-│   ├── mitre/
-│   ├── xai/
-│   └── utils/
-│
-├── scripts/
-│
-├── models/
-│   ├── README.md
-│   ├── preprocessing/
-│   └── trained/
-│
-├── backend/
-│   ├── README.md
-│   └── app/
-│
-├── frontend/
+├── backend/                  # FastAPI Application Server
+│   ├── app/
+│   │   ├── main.py           # FastAPI entrypoint & CORS setup
+│   │   ├── api/
+│   │   │   └── forecast.py   # POST /forecast endpoint
+│   │   └── schemas/
+│   │       └── forecast.py   # Pydantic v2 validation models
 │   └── README.md
-│
-├── tests/
-│
-└── docs/
-    ├── literature/
-    ├── research/
-    ├── datasets/
-    ├── architecture/
-    └── results/
+├── frontend/                 # React 18 + Vite Web Dashboard
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── layout/       # Navbar, Footer, Section wrappers
+│   │   │   └── product/      # TrafficForm, Results, ForecastPlot, XaiExplanation
+│   │   ├── pages/            # Hero, About, Analyze, Forecast, Explainability pages
+│   │   ├── services/
+│   │   │   └── api.js        # Axios REST client to backend
+│   │   ├── App.jsx           # Main state manager & section orchestrator
+│   │   └── index.css         # Global design system & theme tokens
+│   └── package.json
+├── models/                   # Pre-trained ML Artifacts (UNMODIFIED)
+│   ├── trained/
+│   │   ├── xgb_model.json
+│   │   ├── rf_smote_model.pkl
+│   │   ├── feature_names.json
+│   │   └── ensemble_config.json
+│   ├── state_transition_model.json
+│   └── shap_background.csv
+├── src/                      # Core Python Processing Packages
+│   ├── features/
+│   │   └── runtime_transformer.py
+│   ├── temporal/
+│   │   └── markov_model.py
+│   ├── mitre/
+│   │   └── mapper.py
+│   └── xai/
+│       └── shap_explainer.py
+├── tests/                    # Pytest Suite (5 Modules)
+│   ├── test_backend.py
+│   ├── test_features.py
+│   ├── test_models.py
+│   ├── test_preprocessing.py
+│   └── test_temporal.py
+├── requirements.txt          # Python dependencies
+└── README.md                 # Project Documentation
+```
 
-The repository structure is maintained as the canonical project structure. Changes should only be made when a genuine architectural requirement is identified and agreed upon.
+---
 
+## 9. Setup & Installation
 
-16. Research Documentation
+### Prerequisites
+- **Python**: 3.11+ (Python 3.13 recommended)
+- **Node.js**: v18+ and `npm`
 
-Research documentation is maintained under:
+### 1. Backend Setup
 
-docs/research/
+```bash
+# Clone the repository
+git clone https://github.com/PrakulPShetty/NetVision-AI-SIH26153.git
+cd NetVision-AI-SIH26153/NetVision-AI-SIH26153
 
-Important research documents include:
+# Create & activate a Python virtual environment
+python -m venv .venv313
+# Windows (PowerShell):
+.venv313\Scripts\Activate.ps1
+# Linux/macOS:
+source .venv313/bin/activate
 
-research_gap.md
-methodology.md
-research_decisions.md
+# Install dependencies
+pip install -r requirements.txt
+```
 
-Literature documentation is maintained under:
+### 2. Frontend Setup
 
-docs/literature/
+```bash
+cd frontend
+npm install
+```
 
-The current literature survey consists of three research papers.
+---
 
-Research documentation will distinguish between:
+## 10. Running the Application
 
-Findings reported by existing research.
-Our analysis of those findings.
-Proposed research directions for SIH26153.
+### Option A: Run Backend Server
+From the project root:
+```bash
+.venv313\Scripts\python.exe -m uvicorn backend.app.main:app --port 8000 --host 127.0.0.1 --reload
+```
+The FastAPI backend will start at `http://127.0.0.1:8000`.  
+Interactive API docs are available at `http://127.0.0.1:8000/docs`.
 
+### Option B: Run Frontend Dev Server
+From the `frontend/` directory:
+```bash
+npm run dev
+```
+The React web dashboard will launch at `http://localhost:3000`.
 
-17. Research Gap Direction
+---
 
-Existing network intrusion research commonly focuses on detecting or classifying attacks from network traffic.
+## 11. API Endpoints
 
-Our research direction investigates the additional temporal question:
+### 1. Health Check
+- **`GET /health`**
+- **Response**: `{"status": "ok", "service": "NetVision AI API"}`
 
-Can evolving network traffic behaviour be used to forecast a future attack before it occurs?
+### 2. Traffic Forecast Inference
+- **`POST /forecast`**
+- **Request Body**:
+```json
+{
+  "traffic": {
+    "flow_count": 150,
+    "unique_dst_ports": 45,
+    "unique_protocols": 2,
+    "forward_packets": 1200,
+    "forward_bytes": 85000,
+    "backward_packets": 1100,
+    "backward_bytes": 78000,
+    "flow_duration": 5000000,
+    "flow_bytes_per_sec": 32600.0,
+    "flow_packets_per_sec": 460.0,
+    "backward_packets_per_sec": 220.0,
+    "syn_flag_cnt": 80,
+    "ack_flag_cnt": 150,
+    "rst_flag_cnt": 5,
+    "fin_flag_cnt": 10
+  }
+}
+```
+- **Response Schema**: `ForecastResponse`
+  - `current_assessment`: Object containing `predicted_class`, `attack_probability`, `threshold_used` (`0.40`), `ensemble_breakdown`.
+  - `forecast_timeline`: Array of predictions for horizons `[10, 20, 30, 45, 60]` minutes.
+  - `xai_explanation`: Object containing top positive and negative SHAP feature contributions.
+  - `mitre_correlation`: Object containing mapped tactic, technique ID, technique name, and mitigation guidance.
 
-The project therefore investigates:
+---
 
-Static Detection
-      ↓
-Temporal Network Understanding
-      ↓
-State Transition
-      ↓
-Future-State Prediction
-      ↓
-Attack Forecasting
+## 12. Testing & Verification
 
-This research direction will be validated through dataset investigation and experiments.
+### Automated Backend Tests
+Run the complete Pytest suite to verify feature transformation, ML model loading, Markov state transitions, and API routes:
 
+```bash
+.venv313\Scripts\python.exe -m pytest
+```
 
-18. Evaluation
+**Expected Result**: All 5 test suites pass (`5 passed`).
 
-The project will evaluate:
+### Frontend Production Build
+To verify component syntax and TypeScript/JSX bundle integrity:
 
-Classification and Detection Benchmarks
-Accuracy
-Precision
-Recall
-F1-score
-False Positive Rate
-Forecasting
+```bash
+cd frontend
+cmd /c npm run build
+```
 
-Forecasting-specific metrics will be selected after the forecasting target, state representation, and prediction horizon are defined.
+---
 
-Models will be compared under consistent experimental conditions.
+## 13. Limitations & Future Scope
 
+1. **Live PCAP Ingestion**: Future releases will incorporate live WinPcap / LibPcap streaming wrappers to auto-populate the 15 input fields directly from network interfaces in real time.
+2. **Online Markov Model Updating**: Transition probability matrices can be updated online using streaming Bayesian parameter estimation as continuous network traffic logs arrive.
+3. **Multi-Node Federated Intelligence**: Scaling forecasting capabilities across distributed enterprise subnets via federated learning architectures.
 
-19. Project Development Phases
+---
 
-Phase 0 — Project Setup
-Repository setup
-Project structure
-Git configuration
-Python dependencies
-README
-GitHub ↔ Google Colab
-Hugging Face dataset repository
-Colab ↔ Hugging Face
-End-to-end connection test
+## 14. Project Status
 
-Phase 1 — Research Foundation
-Literature survey
-Research gap
-Research questions
-Methodology
-Dataset investigation
+- **Phase 1 (Design & Baseline UI)**: Completed.
+- **Phase 2 (End-to-End Functional Integration)**: **Completed**.
+- **Model Integrity**: 100% Preserved (Unmodified research models and weights).
+- **Integration Status**: Live FastAPI + React integration active.
 
-Phase 2 — Data Pipeline
-Data loading
-Data cleaning
-Encoding
-Scaling
-Feature engineering
+---
 
-Phase 3 — Temporal Representation
-Timestamp ordering
-Time windows
-Sequence construction
-Network state representation
-
-Phase 4 — ML Experiments
-Logistic Regression baseline
-Individual models
-Model comparison
-Ensemble experiments
-
-Phase 5 — Forecasting
-State-transition modelling
-Future-state prediction
-Multi-step forecasting
-Attack forecasting
-
-Phase 6 — XAI and MITRE
-MITRE ATT&CK mapping
-SHAP analysis
-Explainable forecast output
-
-Phase 7 — System Integration
-Model artifacts
-REST API
-FastAPI backend
-Frontend dashboard
-End-to-end integration
-
-Phase 8 — Testing and Evaluation
-Unit testing
-Integration testing
-ML evaluation
-Forecasting evaluation
-XAI validation
-
-Phase 9 — Finalization
-Technical documentation
-Architecture diagrams
-Working demonstration
-Presentation
-SIH submission preparation
-
-
-20. Current Status
-Completed
-GitHub repository created
-Canonical project structure created
-.gitignore configured
-Python dependency structure created
-Literature survey completed with three papers
-Initial research direction established
-In Progress
-Project setup
-Research gap
-Dataset investigation
-Methodology development
-Not Yet Finalized
-Exact temporal window
-Sequence length
-Network state representation
-State-transition algorithm
-Forecasting horizon
-Forecasting target representation
-Final ensemble architecture
-Final ML model
-Final forecasting metrics
-Final MITRE mapping methodology
-Final backend API design
-Final frontend design
-Final deployment and inference architecture
-
-These decisions will be made through research and experimentation.
-
-
-21. Important Development Principle
-
-The project will not assume that a particular model or architecture is the final solution.
-
-The process is:
-
-Literature
-    ↓
-Research Gap
-    ↓
-Hypothesis
-    ↓
-Experiment
-    ↓
+*Developed for Smart India Hackathon 2026 — Problem Statement SIH26153.*
+��
 Evaluation
     ↓
 Comparison
