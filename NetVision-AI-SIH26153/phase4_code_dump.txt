@@ -1,0 +1,6703 @@
+===== CODE CELL 2 =====
+# ============================================================
+# PHASE 4 — TEMPORAL REPRESENTATION
+# STEP 4.1 — ENVIRONMENT & LIBRARY SETUP
+# ============================================================
+
+# -----------------------------
+# 1. Import required libraries
+# -----------------------------
+import os
+import gc
+import glob
+import time
+
+import numpy as np
+import pandas as pd
+import duckdb
+
+from huggingface_hub import HfApi, hf_hub_download
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# -----------------------------
+# 2. Project configuration
+# -----------------------------
+HF_REPO_ID = "PrakulShetty/NetVision-AI-SIH26153"
+HF_REPO_TYPE = "dataset"
+
+PHASE3_HF_PATH = "processed/phase3/final"
+PHASE4_HF_PATH = "processed/phase4"
+
+LOCAL_PHASE4_DIR = "/content/phase4_final"
+
+os.makedirs(LOCAL_PHASE4_DIR, exist_ok=True)
+
+# -----------------------------
+# 3. Display environment info
+# -----------------------------
+print("=" * 60)
+print("PHASE 4 — TEMPORAL REPRESENTATION")
+print("STEP 4.1 — ENVIRONMENT & LIBRARY SETUP")
+print("=" * 60)
+
+print(f"Python       : {pd.io.common.os.environ.get('PYTHON_VERSION', 'Colab environment')}")
+print(f"NumPy        : {np.__version__}")
+print(f"Pandas       : {pd.__version__}")
+print(f"DuckDB       : {duckdb.__version__}")
+
+# -----------------------------
+# 4. Verify DuckDB
+# -----------------------------
+con = duckdb.connect(database=":memory:")
+
+duckdb_test = con.execute("""
+    SELECT
+        1 AS test_value,
+        current_timestamp AS timestamp
+""").fetchone()
+
+print("\nDuckDB test:", duckdb_test)
+
+con.close()
+
+# -----------------------------
+# 5. Verify local Phase 4 directory
+# -----------------------------
+print("\nLocal Phase 4 directory:")
+print(LOCAL_PHASE4_DIR)
+print("Exists:", os.path.exists(LOCAL_PHASE4_DIR))
+
+print("\nStep 4.1 completed successfully.")
+===== CODE CELL 4 =====
+# ============================================================
+# PHASE 4 — TEMPORAL REPRESENTATION
+# STEP 4.2 — HUGGING FACE AUTHENTICATION & CONNECTION
+# ============================================================
+
+from huggingface_hub import login, HfApi
+
+# ------------------------------------------------------------
+# 1. Authenticate with Hugging Face
+# ------------------------------------------------------------
+print("=" * 60)
+print("PHASE 4 — STEP 4.2")
+print("HUGGING FACE AUTHENTICATION & CONNECTION")
+print("=" * 60)
+
+print("\nAuthenticating with Hugging Face...")
+
+# Opens the secure Hugging Face login interface.
+# Do NOT paste your token into the notebook code.
+login()
+
+# ------------------------------------------------------------
+# 2. Create Hugging Face API connection
+# ------------------------------------------------------------
+api = HfApi()
+
+# ------------------------------------------------------------
+# 3. Verify authenticated account
+# ------------------------------------------------------------
+try:
+    user_info = api.whoami()
+    username = user_info.get("name", "Unknown")
+
+    print(f"\nAuthenticated user: {username}")
+
+except Exception as e:
+    raise RuntimeError(
+        f"Hugging Face authentication verification failed: {e}"
+    )
+
+# ------------------------------------------------------------
+# 4. Verify access to the project dataset repository
+# ------------------------------------------------------------
+print("\nChecking project repository access...")
+
+try:
+    repo_info = api.repo_info(
+        repo_id=HF_REPO_ID,
+        repo_type=HF_REPO_TYPE
+    )
+
+    print("Repository access: PASS")
+    print(f"Repository: {HF_REPO_ID}")
+    print(f"Repository type: {HF_REPO_TYPE}")
+
+except Exception as e:
+    raise RuntimeError(
+        f"Unable to access Hugging Face repository: {e}"
+    )
+
+# ------------------------------------------------------------
+# 5. List Phase 3 final files
+# ------------------------------------------------------------
+print("\nChecking Phase 3 final dataset files...")
+
+try:
+    phase3_files = api.list_repo_files(
+        repo_id=HF_REPO_ID,
+        repo_type=HF_REPO_TYPE
+    )
+
+    phase3_paths = sorted([
+        path for path in phase3_files
+        if path.startswith(PHASE3_HF_PATH + "/")
+        and path.lower().endswith(".csv")
+    ])
+
+except Exception as e:
+    raise RuntimeError(
+        f"Unable to list Phase 3 files: {e}"
+    )
+
+# ------------------------------------------------------------
+# 6. Display discovered files
+# ------------------------------------------------------------
+print(f"\nPhase 3 CSV files found: {len(phase3_paths)}")
+
+for i, path in enumerate(phase3_paths, start=1):
+    print(f"{i:02d}. {path}")
+
+# ------------------------------------------------------------
+# 7. Verify expected number of files
+# ------------------------------------------------------------
+if len(phase3_paths) != 10:
+    raise RuntimeError(
+        f"Expected 10 Phase 3 files, but found {len(phase3_paths)}."
+    )
+
+print("\n" + "=" * 60)
+print("STEP 4.2 COMPLETED SUCCESSFULLY")
+print("=" * 60)
+
+print("Hugging Face authentication : PASS")
+print("Repository access           : PASS")
+print("Phase 3 files               : 10/10")
+print("Full dataset download       : NOT PERFORMED")
+print("\nPhase 3 is ready to be used as Phase 4 input.")
+===== CODE CELL 6 =====
+# ============================================================
+# PHASE 4 — TEMPORAL REPRESENTATION
+# STEP 4.3 — CORRECTED PHASE 3 INPUT DATASET VERIFICATION
+# ============================================================
+
+import os
+import pandas as pd
+
+# ------------------------------------------------------------
+# 1. Expected Phase 3 row counts
+# ------------------------------------------------------------
+EXPECTED_ROWS = {
+    "Friday-02-03-2018": 1_043_116,
+    "Friday-16-02-2018": 900_988,
+    "Friday-23-02-2018": 1_045_960,
+    "Thuesday-20-02-2018": 7_948_746,
+    "Thursday-01-03-2018": 331_027,
+    "Thursday-15-02-2018": 1_046_154,
+    "Thursday-22-02-2018": 1_045_288,
+    "Wednesday-14-02-2018": 822_942,
+    "Wednesday-21-02-2018": 1_031_018,
+    "Wednesday-28-02-2018": 606_982
+}
+
+EXPECTED_TOTAL_ROWS = 15_822_221
+EXPECTED_TOTAL_COLUMNS = 70
+EXPECTED_FEATURE_COUNT = 68
+
+REQUIRED_COLUMNS = {"Timestamp", "Label"}
+
+# ------------------------------------------------------------
+# 2. Verify that Step 4.2 discovered all files
+# ------------------------------------------------------------
+print("=" * 70)
+print("PHASE 4 — STEP 4.3")
+print("CORRECTED PHASE 3 INPUT DATASET VERIFICATION")
+print("=" * 70)
+
+if len(phase3_paths) != 10:
+    raise RuntimeError(
+        f"Expected 10 Phase 3 files, found {len(phase3_paths)}."
+    )
+
+# ------------------------------------------------------------
+# 3. Verify each file
+# ------------------------------------------------------------
+results = []
+total_rows = 0
+
+reference_columns = None
+
+for index, hf_path in enumerate(phase3_paths, start=1):
+
+    # --------------------------------------------------------
+    # Extract the dataset date/name correctly.
+    #
+    # Example:
+    # Friday-02-03-2018_TrafficForML_CICFlowMeter.csv
+    #
+    # becomes:
+    # Friday-02-03-2018
+    # --------------------------------------------------------
+    filename = os.path.basename(hf_path)
+
+    filename_key = filename.replace(
+        "_TrafficForML_CICFlowMeter.csv",
+        ""
+    )
+
+    print(f"\n[{index}/10] {filename}")
+
+    # --------------------------------------------------------
+    # Use the local cached file from the previous verification
+    # when available. Otherwise download it.
+    # --------------------------------------------------------
+    local_path = None
+
+    # The previous Step 4.3 downloaded files into the
+    # Hugging Face local cache. hf_hub_download will reuse
+    # the cached copy when available.
+    from huggingface_hub import hf_hub_download
+
+    local_path = hf_hub_download(
+        repo_id=HF_REPO_ID,
+        filename=hf_path,
+        repo_type=HF_REPO_TYPE
+    )
+
+    # --------------------------------------------------------
+    # Use DuckDB for efficient schema and row-count checks.
+    # --------------------------------------------------------
+    con = duckdb.connect(database=":memory:")
+
+    columns_df = con.execute(f"""
+        DESCRIBE
+        SELECT *
+        FROM read_csv(
+            '{local_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+    """).fetchdf()
+
+    columns = columns_df["column_name"].tolist()
+
+    row_count = con.execute(f"""
+        SELECT COUNT(*)
+        FROM read_csv(
+            '{local_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+    """).fetchone()[0]
+
+    con.close()
+
+    # --------------------------------------------------------
+    # 4. Individual checks
+    # --------------------------------------------------------
+    expected_rows = EXPECTED_ROWS.get(filename_key)
+
+    row_count_pass = (
+        expected_rows is not None
+        and row_count == expected_rows
+    )
+
+    column_count_pass = len(columns) == EXPECTED_TOTAL_COLUMNS
+
+    required_columns_pass = REQUIRED_COLUMNS.issubset(
+        set(columns)
+    )
+
+    model_features = [
+        column for column in columns
+        if column not in REQUIRED_COLUMNS
+    ]
+
+    feature_count_pass = (
+        len(model_features) == EXPECTED_FEATURE_COUNT
+    )
+
+    # Schema consistency
+    if reference_columns is None:
+        reference_columns = columns
+        schema_pass = True
+    else:
+        schema_pass = columns == reference_columns
+
+    overall_pass = (
+        row_count_pass
+        and column_count_pass
+        and required_columns_pass
+        and feature_count_pass
+        and schema_pass
+    )
+
+    total_rows += row_count
+
+    results.append({
+        "File": filename_key,
+        "Rows": row_count,
+        "Expected Rows": expected_rows,
+        "Row Count": "PASS" if row_count_pass else "FAIL",
+        "Columns": len(columns),
+        "Features": len(model_features),
+        "Required Columns": (
+            "PASS" if required_columns_pass else "FAIL"
+        ),
+        "Schema": "PASS" if schema_pass else "FAIL",
+        "Overall": "PASS" if overall_pass else "FAIL"
+    })
+
+    # --------------------------------------------------------
+    # 5. Display result
+    # --------------------------------------------------------
+    print(f"Rows             : {row_count:,}")
+    print(f"Expected rows    : {expected_rows:,}")
+    print(f"Columns          : {len(columns)}")
+    print(f"Model features   : {len(model_features)}")
+
+    print(
+        f"Timestamp        : "
+        f"{'PASS' if 'Timestamp' in columns else 'FAIL'}"
+    )
+
+    print(
+        f"Label            : "
+        f"{'PASS' if 'Label' in columns else 'FAIL'}"
+    )
+
+    print(
+        f"Schema           : "
+        f"{'PASS' if schema_pass else 'FAIL'}"
+    )
+
+    print(
+        f"Row count        : "
+        f"{'PASS' if row_count_pass else 'FAIL'}"
+    )
+
+    print(
+        f"Overall          : "
+        f"{'PASS' if overall_pass else 'FAIL'}"
+    )
+
+# ------------------------------------------------------------
+# 6. Final summary
+# ------------------------------------------------------------
+results_df = pd.DataFrame(results)
+
+print("\n" + "=" * 70)
+print("STEP 4.3 — FINAL VERIFICATION SUMMARY")
+print("=" * 70)
+
+print(f"\nFiles verified       : {len(results_df)}/10")
+print(f"Total rows           : {total_rows:,}")
+print(f"Expected total rows  : {EXPECTED_TOTAL_ROWS:,}")
+
+print(
+    "Total row count      :",
+    "PASS" if total_rows == EXPECTED_TOTAL_ROWS else "FAIL"
+)
+
+print(
+    "All row counts       :",
+    "PASS" if (results_df["Row Count"] == "PASS").all()
+    else "FAIL"
+)
+
+print(
+    "All schemas          :",
+    "PASS" if (results_df["Schema"] == "PASS").all()
+    else "FAIL"
+)
+
+print(
+    "All required columns :",
+    "PASS" if (
+        results_df["Required Columns"] == "PASS"
+    ).all()
+    else "FAIL"
+)
+
+print(
+    "All feature counts   :",
+    "PASS" if (
+        results_df["Features"] == EXPECTED_FEATURE_COUNT
+    ).all()
+    else "FAIL"
+)
+
+overall_pass = (
+    len(results_df) == 10
+    and total_rows == EXPECTED_TOTAL_ROWS
+    and (results_df["Row Count"] == "PASS").all()
+    and (results_df["Schema"] == "PASS").all()
+    and (results_df["Required Columns"] == "PASS").all()
+    and (results_df["Features"] == EXPECTED_FEATURE_COUNT).all()
+)
+
+print(
+    "\nPHASE 3 INPUT STATUS :",
+    "PASS" if overall_pass else "FAIL"
+)
+
+if not overall_pass:
+    raise RuntimeError(
+        "Phase 3 input verification failed. "
+        "Do not proceed to temporal processing."
+    )
+
+print("\n" + "=" * 70)
+print("STEP 4.3 COMPLETED SUCCESSFULLY")
+print("=" * 70)
+
+print(
+    "\nPhase 3 is verified and locked as "
+    "read-only input for Phase 4."
+)
+===== CODE CELL 8 =====
+# ============================================================
+# PHASE 4 — TEMPORAL REPRESENTATION
+# STEP 4.4 — TEMPORAL BEHAVIOR & TIME-WINDOW INVESTIGATION
+# ============================================================
+
+import os
+import time
+import duckdb
+import pandas as pd
+
+# ------------------------------------------------------------
+# 1. Configuration
+# ------------------------------------------------------------
+
+TEMPORAL_ANALYSIS_DIR = "/content/phase4_temporal_analysis"
+os.makedirs(TEMPORAL_ANALYSIS_DIR, exist_ok=True)
+
+# Candidate windows to investigate.
+# These are NOT final decisions.
+CANDIDATE_WINDOWS = [
+    "1 minute",
+    "5 minutes",
+    "10 minutes",
+    "30 minutes"
+]
+
+# ------------------------------------------------------------
+# 2. Helper: convert HF filename to readable dataset name
+# ------------------------------------------------------------
+
+def get_dataset_name(hf_path):
+    filename = os.path.basename(hf_path)
+
+    return filename.replace(
+        "_TrafficForML_CICFlowMeter.csv",
+        ""
+    )
+
+# ------------------------------------------------------------
+# 3. Containers for results
+# ------------------------------------------------------------
+
+coverage_results = []
+label_results = []
+minute_activity_results = []
+
+# ------------------------------------------------------------
+# 4. Analyze each Phase 3 file
+# ------------------------------------------------------------
+
+print("=" * 75)
+print("PHASE 4 — STEP 4.4")
+print("TEMPORAL BEHAVIOR & TIME-WINDOW INVESTIGATION")
+print("=" * 75)
+
+print("\nAnalyzing 10 Phase 3 datasets...")
+print("No temporal transformation will be written to HF.\n")
+
+for index, hf_path in enumerate(phase3_paths, start=1):
+
+    dataset_name = get_dataset_name(hf_path)
+
+    print(f"[{index}/10] {dataset_name}")
+
+    start_time = time.time()
+
+    # --------------------------------------------------------
+    # Retrieve local cached Phase 3 file.
+    # Step 4.3 already downloaded these files.
+    # --------------------------------------------------------
+    local_path = hf_hub_download(
+        repo_id=HF_REPO_ID,
+        filename=hf_path,
+        repo_type=HF_REPO_TYPE
+    )
+
+    # --------------------------------------------------------
+    # Open DuckDB connection.
+    # --------------------------------------------------------
+    con = duckdb.connect(database=":memory:")
+
+    # --------------------------------------------------------
+    # A. Timestamp coverage
+    # --------------------------------------------------------
+    coverage_query = f"""
+        SELECT
+            MIN(TRY_CAST("Timestamp" AS TIMESTAMP)) AS start_time,
+            MAX(TRY_CAST("Timestamp" AS TIMESTAMP)) AS end_time,
+            COUNT(*) AS total_rows,
+            COUNT(DISTINCT CAST("Timestamp" AS VARCHAR)) AS unique_timestamps
+        FROM read_csv(
+            '{local_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+    """
+
+    coverage = con.execute(coverage_query).fetchone()
+
+    start_time_value = coverage[0]
+    end_time_value = coverage[1]
+    total_rows = coverage[2]
+    unique_timestamps = coverage[3]
+
+    duration_seconds = (
+        end_time_value - start_time_value
+    ).total_seconds()
+
+    coverage_results.append({
+        "Dataset": dataset_name,
+        "Start": start_time_value,
+        "End": end_time_value,
+        "Duration_seconds": duration_seconds,
+        "Duration_minutes": duration_seconds / 60,
+        "Total_Rows": total_rows,
+        "Unique_Timestamps": unique_timestamps
+    })
+
+    # --------------------------------------------------------
+    # B. Label distribution
+    # --------------------------------------------------------
+    label_query = f"""
+        SELECT
+            "Label" AS label,
+            COUNT(*) AS records
+        FROM read_csv(
+            '{local_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+        GROUP BY "Label"
+        ORDER BY records DESC
+    """
+
+    labels = con.execute(label_query).fetchdf()
+
+    for _, row in labels.iterrows():
+        label_results.append({
+            "Dataset": dataset_name,
+            "Label": row["label"],
+            "Records": int(row["records"])
+        })
+
+    # --------------------------------------------------------
+    # C. Minute-level traffic activity
+    #
+    # This tells us how many network records occur in each
+    # minute and how much the traffic volume changes over time.
+    # --------------------------------------------------------
+    minute_query = f"""
+        SELECT
+            DATE_TRUNC(
+                'minute',
+                TRY_CAST("Timestamp" AS TIMESTAMP)
+            ) AS minute,
+            COUNT(*) AS total_records,
+
+            SUM(
+                CASE
+                    WHEN LOWER(TRIM("Label")) = 'benign'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS benign_records,
+
+            SUM(
+                CASE
+                    WHEN LOWER(TRIM("Label")) <> 'benign'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS attack_records
+
+        FROM read_csv(
+            '{local_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+
+        GROUP BY minute
+        ORDER BY minute
+    """
+
+    minute_df = con.execute(minute_query).fetchdf()
+
+    # Add dataset identifier.
+    minute_df.insert(0, "Dataset", dataset_name)
+
+    minute_activity_results.append(minute_df)
+
+    con.close()
+
+    elapsed = time.time() - start_time
+
+    print(
+        f"    Coverage : {start_time_value} → {end_time_value}"
+    )
+    print(
+        f"    Duration : {duration_seconds / 60:.2f} minutes"
+    )
+    print(
+        f"    Rows     : {total_rows:,}"
+    )
+    print(
+        f"    Minutes  : {len(minute_df):,}"
+    )
+    print(
+        f"    Time     : {elapsed:.1f}s"
+    )
+
+# ------------------------------------------------------------
+# 5. Combine results
+# ------------------------------------------------------------
+
+coverage_df = pd.DataFrame(coverage_results)
+label_df = pd.DataFrame(label_results)
+
+minute_activity_df = pd.concat(
+    minute_activity_results,
+    ignore_index=True
+)
+
+# ------------------------------------------------------------
+# 6. Overall temporal coverage summary
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("TEMPORAL COVERAGE SUMMARY")
+print("=" * 75)
+
+display(
+    coverage_df[
+        [
+            "Dataset",
+            "Start",
+            "End",
+            "Duration_minutes",
+            "Total_Rows",
+            "Unique_Timestamps"
+        ]
+    ]
+)
+
+# ------------------------------------------------------------
+# 7. Calculate overall label summary
+# ------------------------------------------------------------
+
+overall_labels = (
+    label_df
+    .groupby("Label", as_index=False)["Records"]
+    .sum()
+    .sort_values("Records", ascending=False)
+)
+
+print("\n" + "=" * 75)
+print("OVERALL LABEL DISTRIBUTION")
+print("=" * 75)
+
+display(overall_labels)
+
+# ------------------------------------------------------------
+# 8. Calculate minute-level temporal statistics
+# ------------------------------------------------------------
+
+minute_stats = (
+    minute_activity_df
+    .groupby("Dataset")
+    .agg(
+        Total_Minutes=("minute", "count"),
+        Mean_Records_Per_Minute=("total_records", "mean"),
+        Median_Records_Per_Minute=("total_records", "median"),
+        Std_Records_Per_Minute=("total_records", "std"),
+        Min_Records_Per_Minute=("total_records", "min"),
+        Max_Records_Per_Minute=("total_records", "max"),
+        Mean_Attack_Records_Per_Minute=("attack_records", "mean"),
+        Max_Attack_Records_Per_Minute=("attack_records", "max")
+    )
+    .reset_index()
+)
+
+print("\n" + "=" * 75)
+print("MINUTE-LEVEL TRAFFIC ACTIVITY")
+print("=" * 75)
+
+display(minute_stats)
+
+# ------------------------------------------------------------
+# 9. Global minute-level statistics
+# ------------------------------------------------------------
+
+global_minute_stats = {
+    "Mean records/minute":
+        minute_activity_df["total_records"].mean(),
+
+    "Median records/minute":
+        minute_activity_df["total_records"].median(),
+
+    "Std records/minute":
+        minute_activity_df["total_records"].std(),
+
+    "Minimum records/minute":
+        minute_activity_df["total_records"].min(),
+
+    "Maximum records/minute":
+        minute_activity_df["total_records"].max(),
+
+    "Mean attack records/minute":
+        minute_activity_df["attack_records"].mean(),
+
+    "Maximum attack records/minute":
+        minute_activity_df["attack_records"].max()
+}
+
+print("\n" + "=" * 75)
+print("GLOBAL TEMPORAL ACTIVITY STATISTICS")
+print("=" * 75)
+
+for key, value in global_minute_stats.items():
+    print(f"{key:35s}: {value:,.2f}")
+
+# ------------------------------------------------------------
+# 10. Investigate candidate time windows
+#
+# IMPORTANT:
+# These are exploratory statistics only.
+# We are NOT selecting the final window yet.
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("CANDIDATE TIME-WINDOW INVESTIGATION")
+print("=" * 75)
+
+window_results = []
+
+for window in CANDIDATE_WINDOWS:
+
+    window_df = (
+        minute_activity_df
+        .copy()
+    )
+
+    # Convert minute timestamp into the candidate window.
+    window_df["window"] = (
+        window_df["minute"]
+        .dt.floor(window.replace(" ", ""))
+    )
+
+    aggregated = (
+        window_df
+        .groupby(["Dataset", "window"], as_index=False)
+        .agg(
+            records=("total_records", "sum"),
+            benign_records=("benign_records", "sum"),
+            attack_records=("attack_records", "sum")
+        )
+    )
+
+    # Number of records per temporal window.
+    window_stats = (
+        aggregated
+        .groupby("Dataset")
+        .agg(
+            Windows=("window", "count"),
+            Mean_Records=("records", "mean"),
+            Median_Records=("records", "median"),
+            Std_Records=("records", "std"),
+            Min_Records=("records", "min"),
+            Max_Records=("records", "max"),
+            Windows_With_Attack=(
+                "attack_records",
+                lambda x: int((x > 0).sum())
+            )
+        )
+        .reset_index()
+    )
+
+    window_stats.insert(1, "Window_Size", window)
+
+    window_results.append(window_stats)
+
+window_analysis_df = pd.concat(
+    window_results,
+    ignore_index=True
+)
+
+display(window_analysis_df)
+
+# ------------------------------------------------------------
+# 11. Save exploratory results locally
+# ------------------------------------------------------------
+
+coverage_df.to_csv(
+    os.path.join(
+        TEMPORAL_ANALYSIS_DIR,
+        "temporal_coverage_summary.csv"
+    ),
+    index=False
+)
+
+label_df.to_csv(
+    os.path.join(
+        TEMPORAL_ANALYSIS_DIR,
+        "temporal_label_distribution.csv"
+    ),
+    index=False
+)
+
+minute_activity_df.to_csv(
+    os.path.join(
+        TEMPORAL_ANALYSIS_DIR,
+        "minute_level_activity.csv"
+    ),
+    index=False
+)
+
+window_analysis_df.to_csv(
+    os.path.join(
+        TEMPORAL_ANALYSIS_DIR,
+        "candidate_window_analysis.csv"
+    ),
+    index=False
+)
+
+# ------------------------------------------------------------
+# 12. Basic temporal visualization
+# ------------------------------------------------------------
+
+# Use the dataset with the largest number of records for a
+# representative temporal activity plot.
+largest_dataset = (
+    coverage_df
+    .sort_values("Total_Rows", ascending=False)
+    .iloc[0]["Dataset"]
+)
+
+plot_df = minute_activity_df[
+    minute_activity_df["Dataset"] == largest_dataset
+].copy()
+
+plt.figure(figsize=(14, 5))
+
+plt.plot(
+    plot_df["minute"],
+    plot_df["total_records"]
+)
+
+plt.title(
+    f"Minute-Level Network Traffic Activity — {largest_dataset}"
+)
+
+plt.xlabel("Time")
+plt.ylabel("Number of Flow Records")
+
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+# ------------------------------------------------------------
+# 13. Final status
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("STEP 4.4 COMPLETED — TEMPORAL INVESTIGATION FINISHED")
+print("=" * 75)
+
+print(f"Datasets analyzed       : {len(coverage_df)}/10")
+print(f"Total Phase 3 rows      : {coverage_df['Total_Rows'].sum():,}")
+print(
+    "Minute activity records : "
+    f"{len(minute_activity_df):,}"
+)
+
+print("\nExploratory outputs saved locally:")
+print(f"  {TEMPORAL_ANALYSIS_DIR}")
+
+print(
+    "\nNext decision:"
+    "\n  → Select evidence-based temporal window"
+    "\n  → Select forecasting horizon"
+    "\n  → Then construct the temporal dataset"
+)
+
+print("\nNo Phase 3 data was modified.")
+===== CODE CELL 10 =====
+# ============================================================
+# PHASE 4 — TEMPORAL REPRESENTATION
+# STEP 4.4.1 — CORRECTED CANDIDATE TIME-WINDOW ANALYSIS
+# ============================================================
+
+# ------------------------------------------------------------
+# 1. Candidate temporal windows
+# ------------------------------------------------------------
+
+CANDIDATE_WINDOWS = {
+    "1 minute": "1min",
+    "5 minutes": "5min",
+    "10 minutes": "10min",
+    "30 minutes": "30min"
+}
+
+# ------------------------------------------------------------
+# 2. Verify minute-level activity data exists
+# ------------------------------------------------------------
+
+if "minute_activity_df" not in globals():
+    raise RuntimeError(
+        "minute_activity_df is not available. "
+        "Run Step 4.4 temporal investigation first."
+    )
+
+print("=" * 75)
+print("PHASE 4 — STEP 4.4.1")
+print("CANDIDATE TIME-WINDOW ANALYSIS")
+print("=" * 75)
+
+# ------------------------------------------------------------
+# 3. Prepare timestamp data
+# ------------------------------------------------------------
+
+window_source = minute_activity_df.copy()
+
+window_source["minute"] = pd.to_datetime(
+    window_source["minute"]
+)
+
+window_results = []
+
+# ------------------------------------------------------------
+# 4. Evaluate each candidate window
+# ------------------------------------------------------------
+
+for window_name, frequency in CANDIDATE_WINDOWS.items():
+
+    print(f"\nAnalyzing window: {window_name}")
+
+    temp = window_source.copy()
+
+    # Correct pandas frequency notation.
+    temp["window"] = temp["minute"].dt.floor(frequency)
+
+    # Aggregate minute-level activity into candidate windows.
+    aggregated = (
+        temp
+        .groupby(
+            ["Dataset", "window"],
+            as_index=False
+        )
+        .agg(
+            records=("total_records", "sum"),
+            benign_records=("benign_records", "sum"),
+            attack_records=("attack_records", "sum")
+        )
+    )
+
+    # Calculate statistics for each dataset.
+    stats = (
+        aggregated
+        .groupby("Dataset")
+        .agg(
+            Windows=("window", "count"),
+            Mean_Records=("records", "mean"),
+            Median_Records=("records", "median"),
+            Std_Records=("records", "std"),
+            Min_Records=("records", "min"),
+            Max_Records=("records", "max"),
+            Windows_With_Attack=(
+                "attack_records",
+                lambda x: int((x > 0).sum())
+            ),
+            Total_Attack_Records=(
+                "attack_records",
+                "sum"
+            )
+        )
+        .reset_index()
+    )
+
+    stats.insert(1, "Window_Size", window_name)
+
+    # Percentage of windows containing attack traffic.
+    stats["Attack_Window_Percentage"] = (
+        stats["Windows_With_Attack"]
+        / stats["Windows"]
+        * 100
+    )
+
+    window_results.append(stats)
+
+# ------------------------------------------------------------
+# 5. Combine all candidate-window results
+# ------------------------------------------------------------
+
+window_analysis_df = pd.concat(
+    window_results,
+    ignore_index=True
+)
+
+# ------------------------------------------------------------
+# 6. Display results
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("CANDIDATE TIME-WINDOW RESULTS")
+print("=" * 75)
+
+display(window_analysis_df)
+
+# ------------------------------------------------------------
+# 7. Overall summary for each window
+# ------------------------------------------------------------
+
+overall_window_summary = (
+    window_analysis_df
+    .groupby("Window_Size", as_index=False)
+    .agg(
+        Total_Windows=("Windows", "sum"),
+        Mean_Records_Per_Window=("Mean_Records", "mean"),
+        Median_Records_Per_Window=("Median_Records", "mean"),
+        Mean_Std_Records=("Std_Records", "mean"),
+        Min_Records=("Min_Records", "min"),
+        Max_Records=("Max_Records", "max"),
+        Total_Attack_Records=("Total_Attack_Records", "sum"),
+        Mean_Attack_Window_Percentage=(
+            "Attack_Window_Percentage",
+            "mean"
+        )
+    )
+)
+
+# Preserve logical order.
+window_order = [
+    "1 minute",
+    "5 minutes",
+    "10 minutes",
+    "30 minutes"
+]
+
+overall_window_summary["Window_Order"] = (
+    overall_window_summary["Window_Size"]
+    .map({
+        name: i
+        for i, name in enumerate(window_order)
+    })
+)
+
+overall_window_summary = (
+    overall_window_summary
+    .sort_values("Window_Order")
+    .drop(columns="Window_Order")
+)
+
+print("\n" + "=" * 75)
+print("OVERALL WINDOW COMPARISON")
+print("=" * 75)
+
+display(overall_window_summary)
+
+# ------------------------------------------------------------
+# 8. Save results locally
+# ------------------------------------------------------------
+
+window_analysis_path = os.path.join(
+    TEMPORAL_ANALYSIS_DIR,
+    "candidate_window_analysis_corrected.csv"
+)
+
+overall_window_path = os.path.join(
+    TEMPORAL_ANALYSIS_DIR,
+    "overall_window_comparison.csv"
+)
+
+window_analysis_df.to_csv(
+    window_analysis_path,
+    index=False
+)
+
+overall_window_summary.to_csv(
+    overall_window_path,
+    index=False
+)
+
+print("\nSaved:")
+print(window_analysis_path)
+print(overall_window_path)
+
+# ------------------------------------------------------------
+# 9. Completion
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("STEP 4.4.1 COMPLETED SUCCESSFULLY")
+print("=" * 75)
+
+print(
+    "\nThe candidate temporal windows have been evaluated."
+)
+
+print(
+    "\nNext step:"
+    "\n  → Interpret the temporal-window results"
+    "\n  → Select the final window based on evidence"
+    "\n  → Determine the forecasting horizon"
+)
+===== CODE CELL 12 =====
+# ============================================================
+# PHASE 4 — TEMPORAL REPRESENTATION
+# STEP 4.5 — FORECAST HORIZON INVESTIGATION
+# ============================================================
+
+import numpy as np
+import pandas as pd
+
+# ------------------------------------------------------------
+# 1. Verify required input
+# ------------------------------------------------------------
+
+if "minute_activity_df" not in globals():
+    raise RuntimeError(
+        "minute_activity_df is not available. "
+        "Run Step 4.4 first."
+    )
+
+# ------------------------------------------------------------
+# 2. Create 5-minute temporal representation
+#
+# This is an EXPLORATORY state representation.
+# It is NOT the final Phase 4 dataset.
+# ------------------------------------------------------------
+
+print("=" * 75)
+print("PHASE 4 — STEP 4.5")
+print("FORECAST HORIZON INVESTIGATION")
+print("=" * 75)
+
+temp = minute_activity_df.copy()
+
+temp["minute"] = pd.to_datetime(temp["minute"])
+
+# Align every minute to a 5-minute boundary.
+temp["window_start"] = temp["minute"].dt.floor("5min")
+
+# ------------------------------------------------------------
+# 3. Aggregate traffic activity into 5-minute windows
+# ------------------------------------------------------------
+
+five_minute = (
+    temp
+    .groupby(
+        ["Dataset", "window_start"],
+        as_index=False
+    )
+    .agg(
+        total_records=("total_records", "sum"),
+        benign_records=("benign_records", "sum"),
+        attack_records=("attack_records", "sum")
+    )
+)
+
+# ------------------------------------------------------------
+# 4. Construct current-window attack state
+#
+# 0 = No attack traffic
+# 1 = Attack traffic present
+#
+# This is used ONLY for transition analysis.
+# It is not used as a predictor feature.
+# ------------------------------------------------------------
+
+five_minute["attack_state"] = (
+    five_minute["attack_records"] > 0
+).astype(int)
+
+# ------------------------------------------------------------
+# 5. Calculate attack percentage within each window
+# ------------------------------------------------------------
+
+five_minute["attack_ratio"] = np.where(
+    five_minute["total_records"] > 0,
+    five_minute["attack_records"]
+    / five_minute["total_records"],
+    0
+)
+
+# ------------------------------------------------------------
+# 6. Sort chronologically within each dataset
+# ------------------------------------------------------------
+
+five_minute = five_minute.sort_values(
+    ["Dataset", "window_start"]
+).reset_index(drop=True)
+
+# ------------------------------------------------------------
+# 7. Create future states
+#
+# Horizon:
+# 1 step = 5 minutes
+# 2 steps = 10 minutes
+# 3 steps = 15 minutes
+# ------------------------------------------------------------
+
+for horizon in [1, 2, 3]:
+
+    five_minute[f"future_state_{horizon}"] = (
+        five_minute
+        .groupby("Dataset")["attack_state"]
+        .shift(-horizon)
+    )
+
+# ------------------------------------------------------------
+# 8. Analyze state transitions for each horizon
+# ------------------------------------------------------------
+
+transition_results = []
+
+for horizon in [1, 2, 3]:
+
+    future_col = f"future_state_{horizon}"
+
+    valid = five_minute[
+        five_minute[future_col].notna()
+    ].copy()
+
+    # --------------------------------------------------------
+    # Current state → future state
+    # --------------------------------------------------------
+
+    transition_table = (
+        valid
+        .groupby(
+            ["attack_state", future_col]
+        )
+        .size()
+        .reset_index(name="windows")
+    )
+
+    total_valid = len(valid)
+
+    # --------------------------------------------------------
+    # Overall future attack probability
+    # --------------------------------------------------------
+
+    future_attack_probability = (
+        valid[future_col].mean()
+    )
+
+    # --------------------------------------------------------
+    # Attack persistence:
+    # Current attack → future attack
+    # --------------------------------------------------------
+
+    current_attack = valid[
+        valid["attack_state"] == 1
+    ]
+
+    if len(current_attack) > 0:
+
+        attack_persistence = (
+            current_attack[future_col].mean()
+        )
+
+    else:
+        attack_persistence = np.nan
+
+    # --------------------------------------------------------
+    # Attack emergence:
+    # Current benign → future attack
+    # --------------------------------------------------------
+
+    current_benign = valid[
+        valid["attack_state"] == 0
+    ]
+
+    if len(current_benign) > 0:
+
+        attack_emergence = (
+            current_benign[future_col].mean()
+        )
+
+    else:
+        attack_emergence = np.nan
+
+    # --------------------------------------------------------
+    # State-change rate
+    # --------------------------------------------------------
+
+    state_change_rate = (
+        valid["attack_state"] != valid[future_col]
+    ).mean()
+
+    transition_results.append({
+        "Horizon_Steps": horizon,
+        "Horizon_Minutes": horizon * 5,
+        "Valid_Windows": total_valid,
+        "Future_Attack_Probability":
+            future_attack_probability,
+        "Attack_Persistence":
+            attack_persistence,
+        "Attack_Emergence":
+            attack_emergence,
+        "State_Change_Rate":
+            state_change_rate
+    })
+
+    print(
+        f"\nHorizon: {horizon} step(s) "
+        f"= {horizon * 5} minutes"
+    )
+
+    print(
+        f"  Valid windows       : {total_valid:,}"
+    )
+
+    print(
+        f"  Future attack prob. : "
+        f"{future_attack_probability:.4f}"
+    )
+
+    print(
+        f"  Attack persistence  : "
+        f"{attack_persistence:.4f}"
+    )
+
+    print(
+        f"  Attack emergence    : "
+        f"{attack_emergence:.4f}"
+    )
+
+    print(
+        f"  State change rate   : "
+        f"{state_change_rate:.4f}"
+    )
+
+    # --------------------------------------------------------
+    # Display transition matrix
+    # --------------------------------------------------------
+
+    transition_matrix = (
+        pd.crosstab(
+            valid["attack_state"],
+            valid[future_col],
+            normalize="index"
+        )
+        .reindex(
+            index=[0, 1],
+            columns=[0.0, 1.0],
+            fill_value=0
+        )
+    )
+
+    transition_matrix.index = [
+        "Current Benign",
+        "Current Attack"
+    ]
+
+    transition_matrix.columns = [
+        "Future Benign",
+        "Future Attack"
+    ]
+
+    print("\n  Transition probabilities:")
+    display(transition_matrix)
+
+# ------------------------------------------------------------
+# 9. Combine horizon results
+# ------------------------------------------------------------
+
+horizon_df = pd.DataFrame(
+    transition_results
+)
+
+print("\n" + "=" * 75)
+print("FORECAST HORIZON COMPARISON")
+print("=" * 75)
+
+display(horizon_df)
+
+# ------------------------------------------------------------
+# 10. Analyze state duration / attack continuity
+#
+# This helps determine whether 5-minute forecasting steps
+# represent meaningful temporal changes.
+# ------------------------------------------------------------
+
+state_change = (
+    five_minute
+    .groupby("Dataset")["attack_state"]
+    .diff()
+    .fillna(0)
+    .ne(0)
+)
+
+five_minute["state_change"] = state_change.astype(int)
+
+state_change_summary = (
+    five_minute
+    .groupby("Dataset")
+    .agg(
+        Total_5min_Windows=("window_start", "count"),
+        Attack_Windows=("attack_state", "sum"),
+        State_Changes=("state_change", "sum")
+    )
+    .reset_index()
+)
+
+state_change_summary["Attack_Window_Percentage"] = (
+    state_change_summary["Attack_Windows"]
+    / state_change_summary["Total_5min_Windows"]
+    * 100
+)
+
+print("\n" + "=" * 75)
+print("5-MINUTE STATE CHANGE SUMMARY")
+print("=" * 75)
+
+display(state_change_summary)
+
+# ------------------------------------------------------------
+# 11. Save exploratory outputs locally
+# ------------------------------------------------------------
+
+five_minute_path = os.path.join(
+    TEMPORAL_ANALYSIS_DIR,
+    "five_minute_state_exploration.csv"
+)
+
+horizon_path = os.path.join(
+    TEMPORAL_ANALYSIS_DIR,
+    "forecast_horizon_comparison.csv"
+)
+
+state_summary_path = os.path.join(
+    TEMPORAL_ANALYSIS_DIR,
+    "five_minute_state_change_summary.csv"
+)
+
+five_minute.to_csv(
+    five_minute_path,
+    index=False
+)
+
+horizon_df.to_csv(
+    horizon_path,
+    index=False
+)
+
+state_change_summary.to_csv(
+    state_summary_path,
+    index=False
+)
+
+# ------------------------------------------------------------
+# 12. Completion
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("STEP 4.5 COMPLETED SUCCESSFULLY")
+print("=" * 75)
+
+print("\n5-minute temporal representation created for exploration.")
+print("Candidate horizons evaluated: 5, 10, and 15 minutes.")
+
+print("\nSaved exploratory outputs:")
+print(f"  {five_minute_path}")
+print(f"  {horizon_path}")
+print(f"  {state_summary_path}")
+
+print(
+    "\nIMPORTANT:"
+    "\nThese exploratory state variables are not the final"
+    "\nML-ready features or forecasting targets."
+)
+
+print(
+    "\nNext step:"
+    "\n  → Interpret the horizon results"
+    "\n  → Select the forecasting horizon"
+    "\n  → Design the final temporal feature structure"
+)
+===== CODE CELL 14 =====
+# ============================================================
+# STEP 4.6.1 — TEMPORAL FEATURE DESIGN VERIFICATION
+# ============================================================
+
+import os
+import pandas as pd
+import numpy as np
+import duckdb
+from huggingface_hub import hf_hub_download
+
+# ------------------------------------------------------------
+# 1. Configuration
+# ------------------------------------------------------------
+
+HF_REPO = "PrakulShetty/NetVision-AI-SIH26153"
+HF_REPO_TYPE = "dataset"
+
+PHASE3_PATH = "processed/phase3/final"
+
+WINDOW_MINUTES = 5
+FORECAST_HORIZON_MINUTES = 10
+
+# Use one representative Phase 3 file for design testing.
+TEST_FILE = "Friday-23-02-2018_TrafficForML_CICFlowMeter.csv"
+
+print("=" * 70)
+print("STEP 4.6.1 — TEMPORAL FEATURE DESIGN VERIFICATION")
+print("=" * 70)
+
+# ------------------------------------------------------------
+# 2. Download / cache one Phase 3 file
+# ------------------------------------------------------------
+
+local_path = hf_hub_download(
+    repo_id=HF_REPO,
+    filename=f"{PHASE3_PATH}/{TEST_FILE}",
+    repo_type=HF_REPO_TYPE
+)
+
+print(f"\nTest file: {TEST_FILE}")
+print(f"Local path: {local_path}")
+
+# ------------------------------------------------------------
+# 3. Read a manageable sample
+# ------------------------------------------------------------
+
+con = duckdb.connect()
+
+sample_df = con.execute(f"""
+    SELECT *
+    FROM read_csv_auto(
+        '{local_path}',
+        header=True,
+        all_varchar=False,
+        strict_mode=False
+    )
+    ORDER BY Timestamp
+    LIMIT 250000
+""").df()
+
+con.close()
+
+print(f"Sample rows loaded: {len(sample_df):,}")
+print(f"Columns: {len(sample_df.columns)}")
+
+# ------------------------------------------------------------
+# 4. Convert Timestamp
+# ------------------------------------------------------------
+
+sample_df["Timestamp"] = pd.to_datetime(
+    sample_df["Timestamp"],
+    errors="coerce"
+)
+
+sample_df = sample_df.dropna(subset=["Timestamp"]).copy()
+
+# ------------------------------------------------------------
+# 5. Create 5-minute temporal windows
+# ------------------------------------------------------------
+
+sample_df["window_start"] = (
+    sample_df["Timestamp"]
+    .dt.floor(f"{WINDOW_MINUTES}min")
+)
+
+print("\n5-minute window range:")
+print(
+    sample_df["window_start"].min(),
+    "→",
+    sample_df["window_start"].max()
+)
+
+print(
+    f"Unique 5-minute windows: "
+    f"{sample_df['window_start'].nunique():,}"
+)
+
+# ------------------------------------------------------------
+# 6. Define feature groups
+# ------------------------------------------------------------
+
+# Count / volume features.
+count_features = [
+    "Tot Fwd Pkts",
+    "Tot Bwd Pkts",
+    "TotLen Fwd Pkts",
+    "TotLen Bwd Pkts",
+]
+
+# Flow duration and timing features.
+timing_features = [
+    "Flow Duration",
+    "Flow IAT Mean",
+    "Flow IAT Std",
+    "Flow IAT Max",
+    "Fwd IAT Tot",
+    "Fwd IAT Mean",
+    "Fwd IAT Std",
+    "Fwd IAT Max",
+    "Bwd IAT Tot",
+    "Bwd IAT Mean",
+    "Bwd IAT Std",
+    "Bwd IAT Max",
+    "Bwd IAT Min",
+]
+
+# Packet-length/statistical features.
+packet_stat_features = [
+    "Fwd Pkt Len Max",
+    "Fwd Pkt Len Min",
+    "Fwd Pkt Len Mean",
+    "Fwd Pkt Len Std",
+    "Bwd Pkt Len Max",
+    "Bwd Pkt Len Min",
+    "Bwd Pkt Len Mean",
+    "Bwd Pkt Len Std",
+    "Pkt Len Min",
+    "Pkt Len Max",
+    "Pkt Len Mean",
+    "Pkt Len Std",
+    "Pkt Len Var",
+    "Pkt Size Avg",
+]
+
+# Rate features.
+rate_features = [
+    "Flow Byts/s",
+    "Flow Pkts/s",
+    "Bwd Pkts/s",
+]
+
+# TCP flag features.
+flag_features = [
+    "Fwd PSH Flags",
+    "Bwd PSH Flags",
+    "Fwd URG Flags",
+    "Bwd URG Flags",
+    "FIN Flag Cnt",
+    "SYN Flag Cnt",
+    "RST Flag Cnt",
+    "PSH Flag Cnt",
+    "ACK Flag Cnt",
+    "URG Flag Cnt",
+    "CWE Flag Count",
+    "ECE Flag Cnt",
+]
+
+# Directional / ratio features.
+ratio_features = [
+    "Down/Up Ratio",
+]
+
+# Other numeric traffic features.
+other_numeric_features = [
+    "Fwd Header Len",
+    "Bwd Header Len",
+    "Fwd Byts/b Avg",
+    "Fwd Pkts/b Avg",
+    "Fwd Blk Rate Avg",
+    "Bwd Byts/b Avg",
+    "Bwd Pkts/b Avg",
+    "Bwd Blk Rate Avg",
+    "Init Fwd Win Byts",
+    "Init Bwd Win Byts",
+    "Fwd Seg Size Min",
+    "Active Mean",
+    "Active Std",
+    "Active Max",
+    "Active Min",
+    "Idle Mean",
+    "Idle Std",
+    "Idle Max",
+    "Idle Min",
+]
+
+categorical_features = [
+    "Dst Port",
+    "Protocol",
+]
+
+# ------------------------------------------------------------
+# 7. Keep only features actually present
+# ------------------------------------------------------------
+
+def existing(features):
+    return [
+        col for col in features
+        if col in sample_df.columns
+    ]
+
+count_features = existing(count_features)
+timing_features = existing(timing_features)
+packet_stat_features = existing(packet_stat_features)
+rate_features = existing(rate_features)
+flag_features = existing(flag_features)
+ratio_features = existing(ratio_features)
+other_numeric_features = existing(other_numeric_features)
+categorical_features = existing(categorical_features)
+
+# Convert numeric groups safely.
+numeric_groups = (
+    count_features
+    + timing_features
+    + packet_stat_features
+    + rate_features
+    + flag_features
+    + ratio_features
+    + other_numeric_features
+)
+
+for col in numeric_groups:
+    sample_df[col] = pd.to_numeric(
+        sample_df[col],
+        errors="coerce"
+    )
+
+# ------------------------------------------------------------
+# 8. Build aggregation dictionary
+# ------------------------------------------------------------
+
+aggregation = {}
+
+# Volume/count features.
+for col in count_features:
+    aggregation[col] = ["sum", "mean", "max"]
+
+# Timing/statistical features.
+for col in timing_features:
+    aggregation[col] = ["mean", "std", "min", "max"]
+
+# Packet statistics.
+for col in packet_stat_features:
+    aggregation[col] = ["mean", "std", "min", "max"]
+
+# Rates.
+for col in rate_features:
+    aggregation[col] = ["mean", "std", "max"]
+
+# TCP flags.
+for col in flag_features:
+    aggregation[col] = ["sum", "max"]
+
+# Ratios.
+for col in ratio_features:
+    aggregation[col] = ["mean", "std", "max"]
+
+# Remaining numeric traffic features.
+for col in other_numeric_features:
+    aggregation[col] = ["mean", "std", "min", "max"]
+
+# ------------------------------------------------------------
+# 9. Aggregate numerical traffic features
+# ------------------------------------------------------------
+
+temporal_numeric = (
+    sample_df
+    .groupby("window_start")
+    .agg(aggregation)
+)
+
+# Flatten multi-level column names.
+temporal_numeric.columns = [
+    f"{col}_{stat}"
+    for col, stat in temporal_numeric.columns
+]
+
+temporal_numeric = temporal_numeric.reset_index()
+
+# ------------------------------------------------------------
+# 10. Derive categorical traffic diversity features
+# ------------------------------------------------------------
+
+categorical_temporal = (
+    sample_df
+    .groupby("window_start")
+    .agg(
+        unique_dst_ports=("Dst Port", "nunique"),
+        unique_protocols=("Protocol", "nunique"),
+        flow_count=("Label", "size")
+    )
+    .reset_index()
+)
+
+# ------------------------------------------------------------
+# 11. Construct current and future attack state
+# ------------------------------------------------------------
+
+# A window is considered an attack window if at least one
+# attack-labelled flow occurs in that window.
+sample_df["is_attack"] = (
+    sample_df["Label"].astype(str).str.strip().str.lower()
+    != "benign"
+)
+
+state_df = (
+    sample_df
+    .groupby("window_start")
+    .agg(
+        current_attack_state=("is_attack", "max"),
+        attack_flow_count=("is_attack", "sum"),
+        total_flow_count=("is_attack", "size")
+    )
+    .reset_index()
+)
+
+state_df["current_attack_ratio"] = (
+    state_df["attack_flow_count"]
+    / state_df["total_flow_count"]
+)
+
+# ------------------------------------------------------------
+# 12. Combine temporal representation
+# ------------------------------------------------------------
+
+temporal_preview = (
+    temporal_numeric
+    .merge(
+        categorical_temporal,
+        on="window_start",
+        how="left"
+    )
+    .merge(
+        state_df,
+        on="window_start",
+        how="left"
+    )
+    .sort_values("window_start")
+    .reset_index(drop=True)
+)
+
+# ------------------------------------------------------------
+# 13. Create future target using 10-minute horizon
+# ------------------------------------------------------------
+
+# Since the window size is 5 minutes, a 10-minute horizon
+# corresponds to two future windows.
+temporal_preview["future_attack_state"] = (
+    temporal_preview["current_attack_state"]
+    .shift(-2)
+)
+
+# ------------------------------------------------------------
+# 14. Remove rows without a known future target
+# ------------------------------------------------------------
+
+model_preview = temporal_preview.dropna(
+    subset=["future_attack_state"]
+).copy()
+
+# ------------------------------------------------------------
+# 15. Leakage check
+# ------------------------------------------------------------
+
+feature_columns = [
+    col
+    for col in model_preview.columns
+    if col not in {
+        "window_start",
+        "current_attack_state",
+        "attack_flow_count",
+        "total_flow_count",
+        "current_attack_ratio",
+        "future_attack_state",
+    }
+]
+
+label_like_columns = [
+    col
+    for col in feature_columns
+    if "label" in col.lower()
+    or "attack_state" in col.lower()
+    or "attack_ratio" in col.lower()
+    or "attack_flow" in col.lower()
+]
+
+# ------------------------------------------------------------
+# 16. Display results
+# ------------------------------------------------------------
+
+print("\n" + "=" * 70)
+print("TEMPORAL DESIGN VERIFICATION RESULTS")
+print("=" * 70)
+
+print(f"\nTemporal windows created: {len(temporal_preview):,}")
+print(f"Model-ready preview rows: {len(model_preview):,}")
+
+print(
+    f"\nTemporal feature columns: "
+    f"{len(feature_columns):,}"
+)
+
+print(
+    f"Current-state / diagnostic columns: "
+    f"{len(temporal_preview.columns) - len(feature_columns):,}"
+)
+
+print("\nFeature groups:")
+print(f"  Count/volume features     : {len(count_features)}")
+print(f"  Timing features           : {len(timing_features)}")
+print(f"  Packet statistics         : {len(packet_stat_features)}")
+print(f"  Rate features             : {len(rate_features)}")
+print(f"  TCP flag features         : {len(flag_features)}")
+print(f"  Ratio features            : {len(ratio_features)}")
+print(f"  Other numeric features    : {len(other_numeric_features)}")
+print(f"  Categorical-derived       : 3")
+
+print("\nLeakage check:")
+if label_like_columns:
+    print("WARNING — Possible label-related predictor columns:")
+    for col in label_like_columns:
+        print("  ", col)
+else:
+    print("PASS — No label/attack-state target columns used as predictors.")
+
+print("\nFuture target:")
+print("  Target column : future_attack_state")
+print("  Horizon       : 10 minutes")
+print("  Window        : 5 minutes")
+print("  Shift         : 2 windows")
+
+print("\nSample temporal dataset:")
+display(model_preview.head(5))
+
+print("\nTemporal dataset shape:")
+print(model_preview.shape)
+
+print("\n" + "=" * 70)
+print("STEP 4.6.1 COMPLETE")
+print("=" * 70)
+===== CODE CELL 16 =====
+# ============================================================
+# STEP 4.7 — ROBUST PHASE 4 TEMPORAL DATASET CREATION
+# ============================================================
+#
+# Input:
+#   Hugging Face → processed/phase3/final/
+#
+# Temporal design:
+#   Window  : 5 minutes
+#   Horizon : 10 minutes
+#
+# Output:
+#   /content/phase4_final/
+#
+# IMPORTANT:
+#   - Phase 3 remains READ-ONLY.
+#   - Large files are processed using DuckDB.
+#   - Full Phase 3 files are NOT loaded into Pandas.
+#   - No STDDEV_SAMP() is used because extreme values caused
+#     DuckDB range errors on the large Tuesday file.
+#   - Label is used only for constructing state/target fields.
+#   - Hugging Face upload happens only after validation.
+# ============================================================
+
+import os
+import shutil
+import time
+import gc
+import pandas as pd
+import duckdb
+
+from huggingface_hub import login, HfApi, hf_hub_download
+
+
+# ============================================================
+# 1. CONFIGURATION
+# ============================================================
+
+HF_REPO = "PrakulShetty/NetVision-AI-SIH26153"
+HF_REPO_TYPE = "dataset"
+
+PHASE3_HF_DIR = "processed/phase3/final"
+
+LOCAL_OUTPUT_DIR = "/content/phase4_final"
+
+WINDOW_MINUTES = 5
+FORECAST_HORIZON_MINUTES = 10
+
+HORIZON_STEPS = FORECAST_HORIZON_MINUTES // WINDOW_MINUTES
+
+
+EXPECTED_PHASE3_ROWS = {
+    "Friday-02-03-2018_TrafficForML_CICFlowMeter.csv": 1043116,
+    "Friday-16-02-2018_TrafficForML_CICFlowMeter.csv": 900988,
+    "Friday-23-02-2018_TrafficForML_CICFlowMeter.csv": 1045960,
+    "Thuesday-20-02-2018_TrafficForML_CICFlowMeter.csv": 7948746,
+    "Thursday-01-03-2018_TrafficForML_CICFlowMeter.csv": 331027,
+    "Thursday-15-02-2018_TrafficForML_CICFlowMeter.csv": 1046154,
+    "Thursday-22-02-2018_TrafficForML_CICFlowMeter.csv": 1045288,
+    "Wednesday-14-02-2018_TrafficForML_CICFlowMeter.csv": 822942,
+    "Wednesday-21-02-2018_TrafficForML_CICFlowMeter.csv": 1031018,
+    "Wednesday-28-02-2018_TrafficForML_CICFlowMeter.csv": 606982,
+}
+
+
+# ============================================================
+# 2. START
+# ============================================================
+
+print("=" * 75)
+print("STEP 4.7 — ROBUST PHASE 4 TEMPORAL DATASET CREATION")
+print("=" * 75)
+
+start_time = time.time()
+
+
+# ============================================================
+# 3. RESET LOCAL OUTPUT DIRECTORY
+# ============================================================
+
+if os.path.exists(LOCAL_OUTPUT_DIR):
+    shutil.rmtree(LOCAL_OUTPUT_DIR)
+
+os.makedirs(LOCAL_OUTPUT_DIR, exist_ok=True)
+
+print(f"\nLocal output directory: {LOCAL_OUTPUT_DIR}")
+
+
+# ============================================================
+# 4. HUGGING FACE AUTHENTICATION
+# ============================================================
+
+print("\nAuthenticating with Hugging Face...")
+
+login()
+
+api = HfApi()
+
+api.repo_info(
+    repo_id=HF_REPO,
+    repo_type=HF_REPO_TYPE
+)
+
+print(f"PASS — Repository verified: {HF_REPO}")
+
+
+# ============================================================
+# 5. FEATURE GROUPS
+# ============================================================
+
+count_features = [
+    "Tot Fwd Pkts",
+    "Tot Bwd Pkts",
+    "TotLen Fwd Pkts",
+    "TotLen Bwd Pkts",
+]
+
+timing_features = [
+    "Flow Duration",
+    "Flow IAT Mean",
+    "Flow IAT Std",
+    "Flow IAT Max",
+    "Fwd IAT Tot",
+    "Fwd IAT Mean",
+    "Fwd IAT Std",
+    "Fwd IAT Max",
+    "Bwd IAT Tot",
+    "Bwd IAT Mean",
+    "Bwd IAT Std",
+    "Bwd IAT Max",
+    "Bwd IAT Min",
+]
+
+packet_stat_features = [
+    "Fwd Pkt Len Max",
+    "Fwd Pkt Len Min",
+    "Fwd Pkt Len Mean",
+    "Fwd Pkt Len Std",
+    "Bwd Pkt Len Max",
+    "Bwd Pkt Len Min",
+    "Bwd Pkt Len Mean",
+    "Bwd Pkt Len Std",
+    "Pkt Len Min",
+    "Pkt Len Max",
+    "Pkt Len Mean",
+    "Pkt Len Std",
+    "Pkt Len Var",
+    "Pkt Size Avg",
+]
+
+rate_features = [
+    "Flow Byts/s",
+    "Flow Pkts/s",
+    "Bwd Pkts/s",
+]
+
+flag_features = [
+    "Fwd PSH Flags",
+    "Bwd PSH Flags",
+    "Fwd URG Flags",
+    "Bwd URG Flags",
+    "FIN Flag Cnt",
+    "SYN Flag Cnt",
+    "RST Flag Cnt",
+    "PSH Flag Cnt",
+    "ACK Flag Cnt",
+    "URG Flag Cnt",
+    "CWE Flag Count",
+    "ECE Flag Cnt",
+]
+
+ratio_features = [
+    "Down/Up Ratio",
+]
+
+other_numeric_features = [
+    "Fwd Header Len",
+    "Bwd Header Len",
+    "Fwd Byts/b Avg",
+    "Fwd Pkts/b Avg",
+    "Fwd Blk Rate Avg",
+    "Bwd Byts/b Avg",
+    "Bwd Pkts/b Avg",
+    "Bwd Blk Rate Avg",
+    "Init Fwd Win Byts",
+    "Init Bwd Win Byts",
+    "Fwd Seg Size Min",
+    "Active Mean",
+    "Active Std",
+    "Active Max",
+    "Active Min",
+    "Idle Mean",
+    "Idle Std",
+    "Idle Max",
+    "Idle Min",
+]
+
+
+# ============================================================
+# 6. BUILD SAFE DUCKDB AGGREGATION
+# ============================================================
+#
+# We intentionally use:
+#
+#   SUM
+#   AVG
+#   MIN
+#   MAX
+#
+# We DO NOT use STDDEV_SAMP here.
+#
+# Standard deviation can be investigated/added later after
+# the temporal dataset is created and its numeric ranges are
+# known.
+# ============================================================
+
+aggregation_expressions = []
+
+
+# ------------------------------------------------------------
+# Count / volume features
+# ------------------------------------------------------------
+
+for col in count_features:
+
+    aggregation_expressions.extend([
+        f'SUM("{col}") AS "{col}_sum"',
+        f'AVG("{col}") AS "{col}_mean"',
+        f'MAX("{col}") AS "{col}_max"',
+    ])
+
+
+# ------------------------------------------------------------
+# Timing features
+# ------------------------------------------------------------
+
+for col in timing_features:
+
+    aggregation_expressions.extend([
+        f'AVG("{col}") AS "{col}_mean"',
+        f'MIN("{col}") AS "{col}_min"',
+        f'MAX("{col}") AS "{col}_max"',
+    ])
+
+
+# ------------------------------------------------------------
+# Packet statistics
+# ------------------------------------------------------------
+
+for col in packet_stat_features:
+
+    aggregation_expressions.extend([
+        f'AVG("{col}") AS "{col}_mean"',
+        f'MIN("{col}") AS "{col}_min"',
+        f'MAX("{col}") AS "{col}_max"',
+    ])
+
+
+# ------------------------------------------------------------
+# Rate features
+# ------------------------------------------------------------
+
+for col in rate_features:
+
+    aggregation_expressions.extend([
+        f'AVG("{col}") AS "{col}_mean"',
+        f'MAX("{col}") AS "{col}_max"',
+    ])
+
+
+# ------------------------------------------------------------
+# TCP flags
+# ------------------------------------------------------------
+
+for col in flag_features:
+
+    aggregation_expressions.extend([
+        f'SUM("{col}") AS "{col}_sum"',
+        f'MAX("{col}") AS "{col}_max"',
+    ])
+
+
+# ------------------------------------------------------------
+# Ratio features
+# ------------------------------------------------------------
+
+for col in ratio_features:
+
+    aggregation_expressions.extend([
+        f'AVG("{col}") AS "{col}_mean"',
+        f'MAX("{col}") AS "{col}_max"',
+    ])
+
+
+# ------------------------------------------------------------
+# Other numeric features
+# ------------------------------------------------------------
+
+for col in other_numeric_features:
+
+    aggregation_expressions.extend([
+        f'AVG("{col}") AS "{col}_mean"',
+        f'MIN("{col}") AS "{col}_min"',
+        f'MAX("{col}") AS "{col}_max"',
+    ])
+
+
+aggregation_sql = ",\n            ".join(
+    aggregation_expressions
+)
+
+
+# ============================================================
+# 7. PROCESS ALL 10 FILES
+# ============================================================
+
+results = []
+
+
+for file_number, filename in enumerate(
+    EXPECTED_PHASE3_ROWS.keys(),
+    start=1
+):
+
+    print("\n" + "-" * 75)
+    print(f"[{file_number}/10] {filename}")
+    print("-" * 75)
+
+    file_start = time.time()
+
+
+    # ========================================================
+    # 7.1 GET PHASE 3 FILE
+    # ========================================================
+
+    local_input = hf_hub_download(
+        repo_id=HF_REPO,
+        filename=f"{PHASE3_HF_DIR}/{filename}",
+        repo_type=HF_REPO_TYPE
+    )
+
+    print("Phase 3 file available locally.")
+
+
+    # ========================================================
+    # 7.2 DUCKDB CONNECTION
+    # ========================================================
+
+    con = duckdb.connect()
+
+    # Limit parallelism to keep Colab stable.
+    con.execute("SET threads TO 2")
+
+    # Do not retain unnecessary insertion-order metadata.
+    con.execute(
+        "SET preserve_insertion_order = false"
+    )
+
+
+    # ========================================================
+    # 7.3 CREATE TEMPORARY SOURCE VIEW
+    # ========================================================
+    #
+    # DuckDB reads the CSV directly.
+    # The entire file is NOT transferred to Pandas.
+    # ========================================================
+
+    source_query = f"""
+        CREATE OR REPLACE TEMP VIEW source_data AS
+
+        SELECT
+            *,
+            CAST(
+                date_trunc(
+                    'minute',
+                    CAST("Timestamp" AS TIMESTAMP)
+                )
+                -
+                INTERVAL (
+                    EXTRACT(
+                        MINUTE
+                        FROM CAST("Timestamp" AS TIMESTAMP)
+                    ) % {WINDOW_MINUTES}
+                ) MINUTE
+                AS TIMESTAMP
+            ) AS window_start
+
+        FROM read_csv_auto(
+            '{local_input}',
+            header=True,
+            all_varchar=False,
+            strict_mode=False
+        )
+    """
+
+    con.execute(source_query)
+
+
+    # ========================================================
+    # 7.4 VERIFY INPUT ROW COUNT
+    # ========================================================
+
+    actual_rows = con.execute(
+        "SELECT COUNT(*) FROM source_data"
+    ).fetchone()[0]
+
+    expected_rows = EXPECTED_PHASE3_ROWS[filename]
+
+    print(f"Phase 3 rows: {actual_rows:,}")
+
+    if actual_rows != expected_rows:
+
+        con.close()
+
+        raise ValueError(
+            f"""
+ROW COUNT ERROR
+
+File     : {filename}
+Expected : {expected_rows:,}
+Actual   : {actual_rows:,}
+"""
+        )
+
+    print("PASS — Phase 3 row count verified.")
+
+
+    # ========================================================
+    # 7.5 TEMPORAL AGGREGATION
+    # ========================================================
+
+    temporal_query = f"""
+
+        SELECT
+
+            window_start,
+
+            {aggregation_sql},
+
+            COUNT(*) AS flow_count,
+
+            COUNT(DISTINCT "Dst Port")
+                AS unique_dst_ports,
+
+            COUNT(DISTINCT "Protocol")
+                AS unique_protocols,
+
+            MAX(
+                CASE
+                    WHEN LOWER(
+                        TRIM(
+                            CAST("Label" AS VARCHAR)
+                        )
+                    ) != 'benign'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS current_attack_state,
+
+            SUM(
+                CASE
+                    WHEN LOWER(
+                        TRIM(
+                            CAST("Label" AS VARCHAR)
+                        )
+                    ) != 'benign'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS attack_flow_count,
+
+            COUNT(*) AS total_flow_count
+
+        FROM source_data
+
+        GROUP BY window_start
+
+        ORDER BY window_start
+    """
+
+
+    # --------------------------------------------------------
+    # ONLY THE SMALL TEMPORAL RESULT IS BROUGHT INTO PANDAS
+    # --------------------------------------------------------
+
+    temporal_df = con.execute(
+        temporal_query
+    ).df()
+
+
+    # ========================================================
+    # 7.6 CLOSE DUCKDB
+    # ========================================================
+
+    con.close()
+
+    gc.collect()
+
+
+    print(
+        f"5-minute windows created: "
+        f"{len(temporal_df):,}"
+    )
+
+
+    # ========================================================
+    # 7.7 CURRENT ATTACK RATIO
+    # ========================================================
+
+    temporal_df["current_attack_ratio"] = (
+        temporal_df["attack_flow_count"]
+        / temporal_df["total_flow_count"]
+    )
+
+
+    # ========================================================
+    # 7.8 FUTURE ATTACK TARGET
+    # ========================================================
+    #
+    # 5-minute window × 2 = 10 minutes.
+    #
+    # Since each file represents one dataset day/session,
+    # the shift is performed independently within that file.
+    # ========================================================
+
+    temporal_df["future_attack_state"] = (
+        temporal_df["current_attack_state"]
+        .shift(-HORIZON_STEPS)
+    )
+
+
+    # ========================================================
+    # 7.9 REMOVE WINDOWS WITHOUT FUTURE TARGET
+    # ========================================================
+
+    temporal_df = temporal_df.dropna(
+        subset=["future_attack_state"]
+    ).copy()
+
+
+    temporal_df["current_attack_state"] = (
+        temporal_df["current_attack_state"]
+        .astype(bool)
+    )
+
+    temporal_df["future_attack_state"] = (
+        temporal_df["future_attack_state"]
+        .astype(bool)
+    )
+
+
+    # ========================================================
+    # 7.10 DATASET DAY
+    # ========================================================
+
+    temporal_df["dataset_day"] = (
+        temporal_df["window_start"]
+        .dt.strftime("%Y-%m-%d")
+    )
+
+
+    # ========================================================
+    # 7.11 ORGANIZE COLUMNS
+    # ========================================================
+
+    first_columns = [
+        "window_start",
+        "dataset_day",
+    ]
+
+    diagnostic_columns = [
+        "current_attack_state",
+        "attack_flow_count",
+        "total_flow_count",
+        "current_attack_ratio",
+        "future_attack_state",
+    ]
+
+    feature_columns = [
+        col
+        for col in temporal_df.columns
+        if col not in first_columns
+        and col not in diagnostic_columns
+    ]
+
+    temporal_df = temporal_df[
+        first_columns
+        + feature_columns
+        + diagnostic_columns
+    ]
+
+
+    # ========================================================
+    # 7.12 SAVE LOCAL PHASE 4 FILE
+    # ========================================================
+
+    output_path = os.path.join(
+        LOCAL_OUTPUT_DIR,
+        filename
+    )
+
+    temporal_df.to_csv(
+        output_path,
+        index=False
+    )
+
+
+    # ========================================================
+    # 7.13 BASIC VALIDATION
+    # ========================================================
+
+    output_size_mb = (
+        os.path.getsize(output_path)
+        / (1024 ** 2)
+    )
+
+    processing_time = time.time() - file_start
+
+    future_attack_windows = int(
+        temporal_df["future_attack_state"].sum()
+    )
+
+    results.append({
+        "file": filename,
+        "phase3_rows": actual_rows,
+        "temporal_windows": len(temporal_df),
+        "columns": len(temporal_df.columns),
+        "future_attack_windows": future_attack_windows,
+        "output_size_MB": round(output_size_mb, 2),
+        "processing_seconds": round(processing_time, 2),
+    })
+
+
+    print(
+        f"Temporal rows         : "
+        f"{len(temporal_df):,}"
+    )
+
+    print(
+        f"Output columns        : "
+        f"{len(temporal_df.columns):,}"
+    )
+
+    print(
+        f"Future attack windows : "
+        f"{future_attack_windows:,}"
+    )
+
+    print(
+        f"Output size           : "
+        f"{output_size_mb:.2f} MB"
+    )
+
+    print(
+        f"Processing time       : "
+        f"{processing_time:.1f} sec"
+    )
+
+
+    # ========================================================
+    # 7.14 MEMORY CLEANUP
+    # ========================================================
+
+    del temporal_df
+    gc.collect()
+
+
+# ============================================================
+# 8. SUMMARY
+# ============================================================
+
+results_df = pd.DataFrame(results)
+
+print("\n" + "=" * 75)
+print("PHASE 4 LOCAL CREATION SUMMARY")
+print("=" * 75)
+
+display(results_df)
+
+
+print(
+    f"\nTotal Phase 3 rows processed: "
+    f"{results_df['phase3_rows'].sum():,}"
+)
+
+print(
+    f"Total temporal windows: "
+    f"{results_df['temporal_windows'].sum():,}"
+)
+
+print(
+    f"Total output size: "
+    f"{results_df['output_size_MB'].sum():.2f} MB"
+)
+
+
+# ============================================================
+# 9. VERIFY 10 OUTPUT FILES
+# ============================================================
+
+output_files = sorted([
+    f
+    for f in os.listdir(LOCAL_OUTPUT_DIR)
+    if f.endswith(".csv")
+])
+
+print(
+    f"\nPhase 4 output files: "
+    f"{len(output_files)}/10"
+)
+
+
+if len(output_files) != 10:
+
+    raise ValueError(
+        "ERROR — Expected exactly 10 Phase 4 files."
+    )
+
+
+for filename in output_files:
+
+    path = os.path.join(
+        LOCAL_OUTPUT_DIR,
+        filename
+    )
+
+    if os.path.getsize(path) == 0:
+
+        raise ValueError(
+            f"ERROR — Empty Phase 4 file: {filename}"
+        )
+
+
+print(
+    "PASS — All 10 Phase 4 files exist and are non-empty."
+)
+
+
+# ============================================================
+# 10. FINAL
+# ============================================================
+
+gc.collect()
+
+total_time = time.time() - start_time
+
+print(
+    f"\nTotal processing time: "
+    f"{total_time / 60:.2f} minutes"
+)
+
+print("\n" + "=" * 75)
+print("STEP 4.7 COMPLETE")
+print("=" * 75)
+
+print(
+    "\nPhase 4 temporal dataset has been created locally."
+)
+
+print(
+    "\nNext step:"
+    "\nPhase 4 validation BEFORE Hugging Face upload."
+)
+===== CODE CELL 18 =====
+# ============================================================
+# STEP 4.8 — FULL PHASE 4 VALIDATION
+# ============================================================
+
+import os
+import gc
+import numpy as np
+import pandas as pd
+
+# ------------------------------------------------------------
+# 1. Configuration
+# ------------------------------------------------------------
+
+LOCAL_OUTPUT_DIR = "/content/phase4_final"
+
+WINDOW_MINUTES = 5
+FORECAST_HORIZON_MINUTES = 10
+
+EXPECTED_TEMPORAL_ROWS = {
+    "Friday-02-03-2018_TrafficForML_CICFlowMeter.csv": 104,
+    "Friday-16-02-2018_TrafficForML_CICFlowMeter.csv": 63,
+    "Friday-23-02-2018_TrafficForML_CICFlowMeter.csv": 110,
+    "Thuesday-20-02-2018_TrafficForML_CICFlowMeter.csv": 142,
+    "Thursday-01-03-2018_TrafficForML_CICFlowMeter.csv": 113,
+    "Thursday-15-02-2018_TrafficForML_CICFlowMeter.csv": 113,
+    "Thursday-22-02-2018_TrafficForML_CICFlowMeter.csv": 109,
+    "Wednesday-14-02-2018_TrafficForML_CICFlowMeter.csv": 108,
+    "Wednesday-21-02-2018_TrafficForML_CICFlowMeter.csv": 33,
+    "Wednesday-28-02-2018_TrafficForML_CICFlowMeter.csv": 113,
+}
+
+EXPECTED_COLUMNS = 192
+
+EXPECTED_FILES = list(
+    EXPECTED_TEMPORAL_ROWS.keys()
+)
+
+print("=" * 75)
+print("STEP 4.8 — FULL PHASE 4 VALIDATION")
+print("=" * 75)
+
+
+# ------------------------------------------------------------
+# 2. Verify output directory
+# ------------------------------------------------------------
+
+if not os.path.exists(LOCAL_OUTPUT_DIR):
+    raise FileNotFoundError(
+        f"Phase 4 directory not found: {LOCAL_OUTPUT_DIR}"
+    )
+
+print(
+    f"\nPhase 4 directory found: "
+    f"{LOCAL_OUTPUT_DIR}"
+)
+
+
+# ------------------------------------------------------------
+# 3. Verify file completeness
+# ------------------------------------------------------------
+
+actual_files = sorted([
+    f
+    for f in os.listdir(LOCAL_OUTPUT_DIR)
+    if f.endswith(".csv")
+])
+
+print(
+    f"\nCSV files found: "
+    f"{len(actual_files)}/10"
+)
+
+missing_files = sorted(
+    set(EXPECTED_FILES) - set(actual_files)
+)
+
+unexpected_files = sorted(
+    set(actual_files) - set(EXPECTED_FILES)
+)
+
+if missing_files:
+    print("\nMISSING FILES:")
+    for f in missing_files:
+        print("  ", f)
+
+if unexpected_files:
+    print("\nUNEXPECTED FILES:")
+    for f in unexpected_files:
+        print("  ", f)
+
+if missing_files or unexpected_files:
+    raise ValueError(
+        "File completeness validation FAILED."
+    )
+
+print("PASS — All expected Phase 4 files are present.")
+
+
+# ------------------------------------------------------------
+# 4. Validation containers
+# ------------------------------------------------------------
+
+validation_results = []
+
+all_feature_columns = None
+
+total_rows = 0
+total_nan_values = 0
+total_inf_values = 0
+total_duplicate_windows = 0
+total_order_violations = 0
+
+total_future_attack = 0
+total_future_benign = 0
+
+
+# ------------------------------------------------------------
+# 5. Validate each file
+# ------------------------------------------------------------
+
+for index, filename in enumerate(
+    EXPECTED_FILES,
+    start=1
+):
+
+    print("\n" + "-" * 75)
+    print(f"[{index}/10] {filename}")
+    print("-" * 75)
+
+    path = os.path.join(
+        LOCAL_OUTPUT_DIR,
+        filename
+    )
+
+    # --------------------------------------------------------
+    # Read temporal file
+    # --------------------------------------------------------
+
+    df = pd.read_csv(path)
+
+    actual_rows = len(df)
+    actual_columns = len(df.columns)
+
+    expected_rows = EXPECTED_TEMPORAL_ROWS[
+        filename
+    ]
+
+    # --------------------------------------------------------
+    # Row count
+    # --------------------------------------------------------
+
+    row_pass = (
+        actual_rows == expected_rows
+    )
+
+    print(
+        f"Rows: {actual_rows:,} "
+        f"(expected {expected_rows:,}) "
+        f"{'PASS' if row_pass else 'FAIL'}"
+    )
+
+    if not row_pass:
+        raise ValueError(
+            f"Row-count mismatch in {filename}"
+        )
+
+    # --------------------------------------------------------
+    # Column count
+    # --------------------------------------------------------
+
+    column_pass = (
+        actual_columns == EXPECTED_COLUMNS
+    )
+
+    print(
+        f"Columns: {actual_columns} "
+        f"(expected {EXPECTED_COLUMNS}) "
+        f"{'PASS' if column_pass else 'FAIL'}"
+    )
+
+    if not column_pass:
+        raise ValueError(
+            f"Column-count mismatch in {filename}"
+        )
+
+    # --------------------------------------------------------
+    # Required columns
+    # --------------------------------------------------------
+
+    required_columns = [
+        "window_start",
+        "dataset_day",
+        "flow_count",
+        "unique_dst_ports",
+        "unique_protocols",
+        "current_attack_state",
+        "attack_flow_count",
+        "total_flow_count",
+        "current_attack_ratio",
+        "future_attack_state",
+    ]
+
+    missing_required = [
+        col
+        for col in required_columns
+        if col not in df.columns
+    ]
+
+    if missing_required:
+        raise ValueError(
+            f"Missing required columns in {filename}: "
+            f"{missing_required}"
+        )
+
+    print("Required columns: PASS")
+
+    # --------------------------------------------------------
+    # Label leakage check
+    # --------------------------------------------------------
+
+    label_columns = [
+        col
+        for col in df.columns
+        if col.lower() == "label"
+        or "label" in col.lower()
+    ]
+
+    print(
+        f"Label columns present: "
+        f"{len(label_columns)} "
+        f"{'PASS' if not label_columns else 'FAIL'}"
+    )
+
+    if label_columns:
+        raise ValueError(
+            f"Label column detected in Phase 4 predictors: "
+            f"{label_columns}"
+        )
+
+    # --------------------------------------------------------
+    # Timestamp conversion
+    # --------------------------------------------------------
+
+    df["window_start"] = pd.to_datetime(
+        df["window_start"],
+        errors="coerce"
+    )
+
+    invalid_timestamps = int(
+        df["window_start"].isna().sum()
+    )
+
+    timestamp_pass = (
+        invalid_timestamps == 0
+    )
+
+    print(
+        f"Invalid timestamps: "
+        f"{invalid_timestamps} "
+        f"{'PASS' if timestamp_pass else 'FAIL'}"
+    )
+
+    if not timestamp_pass:
+        raise ValueError(
+            f"Invalid timestamps in {filename}"
+        )
+
+    # --------------------------------------------------------
+    # Chronological ordering
+    # --------------------------------------------------------
+
+    timestamp_diff = (
+        df["window_start"]
+        .diff()
+        .dropna()
+    )
+
+    order_violations = int(
+        (timestamp_diff < pd.Timedelta(0)).sum()
+    )
+
+    chronological_pass = (
+        order_violations == 0
+    )
+
+    print(
+        f"Chronological violations: "
+        f"{order_violations} "
+        f"{'PASS' if chronological_pass else 'FAIL'}"
+    )
+
+    if not chronological_pass:
+        raise ValueError(
+            f"Chronological ordering failed in {filename}"
+        )
+
+    total_order_violations += order_violations
+
+    # --------------------------------------------------------
+    # Duplicate temporal windows
+    # --------------------------------------------------------
+
+    duplicate_windows = int(
+        df["window_start"].duplicated().sum()
+    )
+
+    duplicate_pass = (
+        duplicate_windows == 0
+    )
+
+    print(
+        f"Duplicate windows: "
+        f"{duplicate_windows} "
+        f"{'PASS' if duplicate_pass else 'FAIL'}"
+    )
+
+    if not duplicate_pass:
+        raise ValueError(
+            f"Duplicate temporal windows in {filename}"
+        )
+
+    total_duplicate_windows += duplicate_windows
+
+    # --------------------------------------------------------
+    # Check temporal alignment
+    #
+    # Windows should normally be aligned to 5-minute boundaries.
+    # --------------------------------------------------------
+
+    minute_values = (
+        df["window_start"].dt.minute
+    )
+
+    second_values = (
+        df["window_start"].dt.second
+    )
+
+    alignment_pass = (
+        (minute_values % WINDOW_MINUTES == 0).all()
+        and (second_values == 0).all()
+    )
+
+    print(
+        f"5-minute window alignment: "
+        f"{'PASS' if alignment_pass else 'FAIL'}"
+    )
+
+    if not alignment_pass:
+        raise ValueError(
+            f"5-minute alignment failed in {filename}"
+        )
+
+    # --------------------------------------------------------
+    # Numeric columns
+    # --------------------------------------------------------
+
+    numeric_df = df.select_dtypes(
+        include=[np.number]
+    )
+
+    # --------------------------------------------------------
+    # NaN investigation
+    # --------------------------------------------------------
+
+    nan_count = int(
+        numeric_df.isna().sum().sum()
+    )
+
+    total_nan_values += nan_count
+
+    print(
+        f"Numeric NaN values: "
+        f"{nan_count}"
+    )
+
+    # --------------------------------------------------------
+    # Infinite-value investigation
+    # --------------------------------------------------------
+
+    if len(numeric_df.columns) > 0:
+
+        inf_count = int(
+            np.isinf(
+                numeric_df.to_numpy(
+                    dtype=np.float64
+                )
+            ).sum()
+        )
+
+    else:
+        inf_count = 0
+
+    total_inf_values += inf_count
+
+    print(
+        f"Infinite numeric values: "
+        f"{inf_count}"
+    )
+
+    if inf_count != 0:
+        raise ValueError(
+            f"Infinite values detected in {filename}"
+        )
+
+    # --------------------------------------------------------
+    # Target validation
+    # --------------------------------------------------------
+
+    target_values = (
+        df["future_attack_state"]
+        .dropna()
+        .astype(bool)
+    )
+
+    target_unique = sorted(
+        target_values.unique().tolist()
+    )
+
+    target_valid = set(
+        target_unique
+    ).issubset({False, True})
+
+    print(
+        f"Future target values: "
+        f"{target_unique} "
+        f"{'PASS' if target_valid else 'FAIL'}"
+    )
+
+    if not target_valid:
+        raise ValueError(
+            f"Invalid future target values in {filename}"
+        )
+
+    future_attack_count = int(
+        target_values.sum()
+    )
+
+    future_benign_count = int(
+        len(target_values) - future_attack_count
+    )
+
+    total_future_attack += future_attack_count
+    total_future_benign += future_benign_count
+
+    # --------------------------------------------------------
+    # Current attack ratio validation
+    # --------------------------------------------------------
+
+    ratio_invalid = int(
+        (
+            (df["current_attack_ratio"] < 0)
+            |
+            (df["current_attack_ratio"] > 1)
+        ).sum()
+    )
+
+    ratio_pass = (
+        ratio_invalid == 0
+    )
+
+    print(
+        f"Current attack ratio range: "
+        f"{df['current_attack_ratio'].min():.6f} "
+        f"→ "
+        f"{df['current_attack_ratio'].max():.6f} "
+        f"{'PASS' if ratio_pass else 'FAIL'}"
+    )
+
+    if not ratio_pass:
+        raise ValueError(
+            f"Invalid attack ratio in {filename}"
+        )
+
+    # --------------------------------------------------------
+    # Flow-count validation
+    # --------------------------------------------------------
+
+    flow_count_consistency = (
+        df["flow_count"]
+        == df["total_flow_count"]
+    ).all()
+
+    print(
+        f"Flow-count consistency: "
+        f"{'PASS' if flow_count_consistency else 'FAIL'}"
+    )
+
+    if not flow_count_consistency:
+        raise ValueError(
+            f"Flow count inconsistency in {filename}"
+        )
+
+    # --------------------------------------------------------
+    # Feature-schema consistency
+    # --------------------------------------------------------
+
+    non_predictor_columns = {
+        "window_start",
+        "dataset_day",
+        "current_attack_state",
+        "attack_flow_count",
+        "total_flow_count",
+        "current_attack_ratio",
+        "future_attack_state",
+    }
+
+    current_features = [
+        col
+        for col in df.columns
+        if col not in non_predictor_columns
+    ]
+
+    if all_feature_columns is None:
+
+        all_feature_columns = current_features
+
+        print(
+            f"Reference predictor feature count: "
+            f"{len(all_feature_columns)}"
+        )
+
+    else:
+
+        schema_match = (
+            current_features
+            == all_feature_columns
+        )
+
+        print(
+            f"Predictor schema consistency: "
+            f"{'PASS' if schema_match else 'FAIL'}"
+        )
+
+        if not schema_match:
+            raise ValueError(
+                f"Predictor schema mismatch in {filename}"
+            )
+
+    # --------------------------------------------------------
+    # Store result
+    # --------------------------------------------------------
+
+    validation_results.append({
+        "file": filename,
+        "rows": actual_rows,
+        "columns": actual_columns,
+        "features": len(current_features),
+        "invalid_timestamps": invalid_timestamps,
+        "order_violations": order_violations,
+        "duplicate_windows": duplicate_windows,
+        "nan_values": nan_count,
+        "infinite_values": inf_count,
+        "future_attack_windows": future_attack_count,
+        "future_benign_windows": future_benign_count,
+    })
+
+    total_rows += actual_rows
+
+    # --------------------------------------------------------
+    # Free memory
+    # --------------------------------------------------------
+
+    del df
+    del numeric_df
+
+    gc.collect()
+
+
+# ============================================================
+# 6. GLOBAL VALIDATION SUMMARY
+# ============================================================
+
+validation_df = pd.DataFrame(
+    validation_results
+)
+
+print("\n" + "=" * 75)
+print("PHASE 4 VALIDATION SUMMARY")
+print("=" * 75)
+
+display(validation_df)
+
+
+# ============================================================
+# 7. GLOBAL CHECKS
+# ============================================================
+
+print("\n" + "=" * 75)
+print("GLOBAL VALIDATION CHECKS")
+print("=" * 75)
+
+
+# ------------------------------------------------------------
+# Files
+# ------------------------------------------------------------
+
+files_pass = (
+    len(validation_df) == 10
+)
+
+print(
+    f"10 files validated: "
+    f"{'PASS' if files_pass else 'FAIL'}"
+)
+
+
+# ------------------------------------------------------------
+# Total rows
+# ------------------------------------------------------------
+
+expected_total_rows = sum(
+    EXPECTED_TEMPORAL_ROWS.values()
+)
+
+rows_pass = (
+    total_rows == expected_total_rows
+)
+
+print(
+    f"Total rows: {total_rows:,} "
+    f"(expected {expected_total_rows:,}) "
+    f"{'PASS' if rows_pass else 'FAIL'}"
+)
+
+
+# ------------------------------------------------------------
+# Columns
+# ------------------------------------------------------------
+
+columns_pass = (
+    validation_df["columns"]
+    .eq(EXPECTED_COLUMNS)
+    .all()
+)
+
+print(
+    f"192-column schema: "
+    f"{'PASS' if columns_pass else 'FAIL'}"
+)
+
+
+# ------------------------------------------------------------
+# Timestamp
+# ------------------------------------------------------------
+
+timestamp_pass = (
+    validation_df["invalid_timestamps"]
+    .sum() == 0
+)
+
+print(
+    f"Invalid timestamps = 0: "
+    f"{'PASS' if timestamp_pass else 'FAIL'}"
+)
+
+
+# ------------------------------------------------------------
+# Ordering
+# ------------------------------------------------------------
+
+ordering_pass = (
+    validation_df["order_violations"]
+    .sum() == 0
+)
+
+print(
+    f"Chronological ordering: "
+    f"{'PASS' if ordering_pass else 'FAIL'}"
+)
+
+
+# ------------------------------------------------------------
+# Duplicate windows
+# ------------------------------------------------------------
+
+duplicates_pass = (
+    validation_df["duplicate_windows"]
+    .sum() == 0
+)
+
+print(
+    f"Duplicate windows = 0: "
+    f"{'PASS' if duplicates_pass else 'FAIL'}"
+)
+
+
+# ------------------------------------------------------------
+# Infinite values
+# ------------------------------------------------------------
+
+infinite_pass = (
+    total_inf_values == 0
+)
+
+print(
+    f"Infinite values = 0: "
+    f"{'PASS' if infinite_pass else 'FAIL'}"
+)
+
+
+# ------------------------------------------------------------
+# Target
+# ------------------------------------------------------------
+
+target_total = (
+    total_future_attack
+    + total_future_benign
+)
+
+target_pass = (
+    target_total == total_rows
+)
+
+print(
+    f"Target coverage: "
+    f"{'PASS' if target_pass else 'FAIL'}"
+)
+
+
+# ------------------------------------------------------------
+# Feature count
+# ------------------------------------------------------------
+
+feature_count_pass = (
+    len(all_feature_columns) == 185
+)
+
+print(
+    f"Predictor feature count = 185: "
+    f"{'PASS' if feature_count_pass else 'FAIL'}"
+)
+
+
+# ============================================================
+# 8. TARGET DISTRIBUTION
+# ============================================================
+
+print("\n" + "=" * 75)
+print("FUTURE ATTACK TARGET DISTRIBUTION")
+print("=" * 75)
+
+print(
+    f"Future benign windows : "
+    f"{total_future_benign:,}"
+)
+
+print(
+    f"Future attack windows : "
+    f"{total_future_attack:,}"
+)
+
+if target_total > 0:
+
+    attack_percentage = (
+        total_future_attack
+        / target_total
+        * 100
+    )
+
+    benign_percentage = (
+        total_future_benign
+        / target_total
+        * 100
+    )
+
+    print(
+        f"\nFuture benign: "
+        f"{benign_percentage:.2f}%"
+    )
+
+    print(
+        f"Future attack: "
+        f"{attack_percentage:.2f}%"
+    )
+
+
+# ============================================================
+# 9. FINAL LEAKAGE CHECK
+# ============================================================
+
+print("\n" + "=" * 75)
+print("FINAL LEAKAGE CHECK")
+print("=" * 75)
+
+leakage_keywords = [
+    "label",
+    "future_attack",
+    "current_attack",
+    "attack_flow",
+    "attack_ratio",
+]
+
+potential_leakage = []
+
+for col in all_feature_columns:
+
+    lower_col = col.lower()
+
+    if any(
+        keyword in lower_col
+        for keyword in leakage_keywords
+    ):
+        potential_leakage.append(col)
+
+
+if potential_leakage:
+
+    print(
+        "WARNING — Potential leakage columns:"
+    )
+
+    for col in potential_leakage:
+        print("  ", col)
+
+    raise ValueError(
+        "Potential target leakage detected."
+    )
+
+else:
+
+    print(
+        "PASS — No attack-label/state-derived "
+        "columns are present in the predictor feature set."
+    )
+
+
+# ============================================================
+# 10. FINAL DECISION
+# ============================================================
+
+all_checks = [
+    files_pass,
+    rows_pass,
+    columns_pass,
+    timestamp_pass,
+    ordering_pass,
+    duplicates_pass,
+    infinite_pass,
+    target_pass,
+    feature_count_pass,
+    len(potential_leakage) == 0,
+]
+
+print("\n" + "=" * 75)
+
+if all(all_checks):
+
+    print("PHASE 4 VALIDATION: PASS")
+    print("=" * 75)
+
+    print(
+        "\nThe local Phase 4 temporal dataset is ready "
+        "for Hugging Face upload."
+    )
+
+else:
+
+    print("PHASE 4 VALIDATION: FAILED")
+    print("=" * 75)
+
+    print(
+        "\nDO NOT upload Phase 4 yet."
+    )
+
+print(
+    f"\nTotal temporal rows: {total_rows:,}"
+)
+
+print(
+    f"Predictor features : {len(all_feature_columns)}"
+)
+
+print(
+    f"Forecast horizon   : {FORECAST_HORIZON_MINUTES} minutes"
+)
+
+print(
+    f"Temporal window    : {WINDOW_MINUTES} minutes"
+)
+
+print("\n" + "=" * 75)
+print("STEP 4.8 COMPLETE")
+print("=" * 75)
+===== CODE CELL 20 =====
+# ============================================================
+# STEP 4.8.1 — PHASE 4 NaN INVESTIGATION
+# ============================================================
+#
+# Purpose:
+#   Investigate where NaN values exist in the Phase 4 temporal
+#   representation dataset before deciding how they should be
+#   treated.
+#
+# IMPORTANT:
+#   - No data is modified.
+#   - No rows are deleted.
+#   - No imputation is performed.
+#   - Nothing is uploaded to Hugging Face.
+#
+# Input:
+#   /content/phase4_final/
+#
+# Output:
+#   1. File-level NaN summary
+#   2. Feature-level NaN summary
+#   3. Affected-window summary
+#   4. Overall NaN statistics
+# ============================================================
+
+from pathlib import Path
+import pandas as pd
+import numpy as np
+import time
+
+# ------------------------------------------------------------
+# 1. Configuration
+# ------------------------------------------------------------
+
+PHASE4_DIR = Path("/content/phase4_final")
+
+if not PHASE4_DIR.exists():
+    raise FileNotFoundError(
+        f"Phase 4 directory not found: {PHASE4_DIR}"
+    )
+
+phase4_files = sorted(PHASE4_DIR.glob("*.csv"))
+
+if len(phase4_files) == 0:
+    raise FileNotFoundError(
+        f"No CSV files found inside {PHASE4_DIR}"
+    )
+
+print("=" * 75)
+print("STEP 4.8.1 — PHASE 4 NaN INVESTIGATION")
+print("=" * 75)
+
+print(f"\nInput directory : {PHASE4_DIR}")
+print(f"CSV files found : {len(phase4_files)}")
+
+print("\nFiles:")
+for file in phase4_files:
+    print(f"  - {file.name}")
+
+
+# ------------------------------------------------------------
+# 2. Define non-predictor / diagnostic columns
+# ------------------------------------------------------------
+#
+# These columns are NOT part of the 185 predictor features.
+# future_attack_state is the forecasting target.
+# ------------------------------------------------------------
+
+NON_PREDICTOR_COLUMNS = {
+    "window_start",
+    "dataset_day",
+    "current_attack_state",
+    "attack_flow_count",
+    "total_flow_count",
+    "current_attack_ratio",
+    "future_attack_state",
+}
+
+
+# ------------------------------------------------------------
+# 3. Containers for investigation results
+# ------------------------------------------------------------
+
+file_summary = []
+feature_summary = []
+window_summary = []
+
+total_start_time = time.time()
+
+
+# ------------------------------------------------------------
+# 4. Process each Phase 4 file
+# ------------------------------------------------------------
+
+for file_path in phase4_files:
+
+    start_time = time.time()
+
+    print("\n" + "-" * 75)
+    print(f"Investigating: {file_path.name}")
+    print("-" * 75)
+
+    # --------------------------------------------------------
+    # Read file
+    # --------------------------------------------------------
+
+    df = pd.read_csv(file_path)
+
+    print(f"Rows    : {len(df):,}")
+    print(f"Columns : {len(df):,}")
+
+    # --------------------------------------------------------
+    # Identify predictor features
+    # --------------------------------------------------------
+
+    predictor_features = [
+        col
+        for col in df.columns
+        if col not in NON_PREDICTOR_COLUMNS
+    ]
+
+    print(f"Predictor features: {len(predictor_features)}")
+
+    # --------------------------------------------------------
+    # Check NaN values only in predictor features
+    # --------------------------------------------------------
+
+    nan_matrix = df[predictor_features].isna()
+
+    total_nan = int(nan_matrix.sum().sum())
+
+    windows_with_nan = int(
+        nan_matrix.any(axis=1).sum()
+    )
+
+    # --------------------------------------------------------
+    # File-level NaN percentage
+    # --------------------------------------------------------
+
+    total_predictor_values = (
+        len(df) * len(predictor_features)
+    )
+
+    nan_percentage = (
+        (total_nan / total_predictor_values) * 100
+        if total_predictor_values > 0
+        else 0
+    )
+
+    print(f"NaN values         : {total_nan:,}")
+    print(f"Windows with NaN   : {windows_with_nan:,}")
+    print(f"NaN percentage     : {nan_percentage:.6f}%")
+
+
+    # --------------------------------------------------------
+    # 5. Feature-level NaN investigation
+    # --------------------------------------------------------
+
+    feature_nan_counts = nan_matrix.sum()
+
+    affected_features = feature_nan_counts[
+        feature_nan_counts > 0
+    ].sort_values(ascending=False)
+
+    if len(affected_features) > 0:
+
+        print("\nFeatures containing NaN values:")
+
+        for feature, count in affected_features.items():
+
+            percentage = (
+                (count / len(df)) * 100
+                if len(df) > 0
+                else 0
+            )
+
+            print(
+                f"  {feature:<35} "
+                f"{int(count):>6,} NaNs "
+                f"({percentage:.4f}%)"
+            )
+
+            feature_summary.append({
+                "file": file_path.name,
+                "feature": feature,
+                "nan_count": int(count),
+                "total_rows": int(len(df)),
+                "nan_percentage": percentage
+            })
+
+    else:
+
+        print("\nNo NaN values found in predictor features.")
+
+
+    # --------------------------------------------------------
+    # 6. Window-level NaN investigation
+    # --------------------------------------------------------
+    #
+    # Identify exactly which temporal windows contain NaNs.
+    # --------------------------------------------------------
+
+    affected_window_mask = nan_matrix.any(axis=1)
+
+    affected_indices = np.where(
+        affected_window_mask
+    )[0]
+
+    if len(affected_indices) > 0:
+
+        print(
+            f"\nAffected temporal windows: "
+            f"{len(affected_indices):,}"
+        )
+
+        # Limit detailed display so the notebook output
+        # does not become excessively large.
+        DISPLAY_LIMIT = 50
+
+        print(
+            f"\nShowing up to {DISPLAY_LIMIT} affected windows:"
+        )
+
+        for idx in affected_indices[:DISPLAY_LIMIT]:
+
+            row = df.iloc[idx]
+
+            affected_features_for_window = [
+                feature
+                for feature in predictor_features
+                if pd.isna(row[feature])
+            ]
+
+            window_start = row.get(
+                "window_start",
+                "N/A"
+            )
+
+            window_summary.append({
+                "file": file_path.name,
+                "row_index": int(idx),
+                "window_start": window_start,
+                "nan_feature_count": len(
+                    affected_features_for_window
+                ),
+                "nan_features": ", ".join(
+                    affected_features_for_window
+                )
+            })
+
+            print(
+                f"  Row {idx:>4} | "
+                f"Window: {window_start} | "
+                f"NaN features: "
+                f"{len(affected_features_for_window)}"
+            )
+
+            print(
+                f"       {affected_features_for_window}"
+            )
+
+        if len(affected_indices) > DISPLAY_LIMIT:
+            print(
+                f"\n  ... "
+                f"{len(affected_indices) - DISPLAY_LIMIT:,} "
+                f"additional affected windows not displayed."
+            )
+
+    else:
+
+        print("\nNo temporal windows contain NaN values.")
+
+
+    # --------------------------------------------------------
+    # 7. File summary
+    # --------------------------------------------------------
+
+    file_summary.append({
+        "file": file_path.name,
+        "rows": int(len(df)),
+        "predictor_features": int(len(predictor_features)),
+        "nan_values": total_nan,
+        "windows_with_nan": windows_with_nan,
+        "nan_percentage": nan_percentage
+    })
+
+    elapsed = time.time() - start_time
+
+    print(
+        f"\nInvestigation time: {elapsed:.2f} seconds"
+    )
+
+
+# ------------------------------------------------------------
+# 8. Convert results into DataFrames
+# ------------------------------------------------------------
+
+file_summary_df = pd.DataFrame(
+    file_summary
+)
+
+feature_summary_df = pd.DataFrame(
+    feature_summary
+)
+
+window_summary_df = pd.DataFrame(
+    window_summary
+)
+
+
+# ------------------------------------------------------------
+# 9. FILE-LEVEL SUMMARY
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("FILE-LEVEL NaN SUMMARY")
+print("=" * 75)
+
+if len(file_summary_df) > 0:
+
+    display(
+        file_summary_df.style.format({
+            "rows": "{:,}",
+            "predictor_features": "{:,}",
+            "nan_values": "{:,}",
+            "windows_with_nan": "{:,}",
+            "nan_percentage": "{:.6f}%"
+        })
+    )
+
+
+# ------------------------------------------------------------
+# 10. FEATURE-LEVEL SUMMARY
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("FEATURE-LEVEL NaN SUMMARY")
+print("=" * 75)
+
+if len(feature_summary_df) > 0:
+
+    feature_summary_overall = (
+        feature_summary_df
+        .groupby("feature", as_index=False)
+        .agg(
+            total_nan_values=("nan_count", "sum"),
+            files_affected=("file", "nunique")
+        )
+        .sort_values(
+            "total_nan_values",
+            ascending=False
+        )
+    )
+
+    print(
+        f"\nUnique affected features: "
+        f"{feature_summary_overall['feature'].nunique()}"
+    )
+
+    display(
+        feature_summary_overall.style.format({
+            "total_nan_values": "{:,}",
+            "files_affected": "{:,}"
+        })
+    )
+
+else:
+
+    print("\nNo predictor features contain NaN values.")
+
+
+# ------------------------------------------------------------
+# 11. AFFECTED WINDOW SUMMARY
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("AFFECTED WINDOW SUMMARY")
+print("=" * 75)
+
+if len(window_summary_df) > 0:
+
+    print(
+        f"\nDetailed affected windows recorded: "
+        f"{len(window_summary_df):,}"
+    )
+
+    display(
+        window_summary_df.head(50)
+    )
+
+else:
+
+    print("\nNo affected windows found.")
+
+
+# ------------------------------------------------------------
+# 12. OVERALL NaN STATISTICS
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("OVERALL NaN STATISTICS")
+print("=" * 75)
+
+total_nan = int(
+    file_summary_df["nan_values"].sum()
+)
+
+files_with_nan = int(
+    (file_summary_df["nan_values"] > 0).sum()
+)
+
+total_affected_windows = int(
+    file_summary_df["windows_with_nan"].sum()
+)
+
+if len(feature_summary_df) > 0:
+
+    unique_affected_features = int(
+        feature_summary_df["feature"].nunique()
+    )
+
+else:
+
+    unique_affected_features = 0
+
+
+print(
+    f"Total NaN values         : {total_nan:,}"
+)
+
+print(
+    f"Files affected           : "
+    f"{files_with_nan}/10"
+)
+
+print(
+    f"Affected windows         : "
+    f"{total_affected_windows:,}"
+)
+
+print(
+    f"Unique affected features : "
+    f"{unique_affected_features}"
+)
+
+
+# ------------------------------------------------------------
+# 13. Overall NaN percentage
+# ------------------------------------------------------------
+
+total_rows = int(
+    file_summary_df["rows"].sum()
+)
+
+# All files have the same 185 predictor schema.
+TOTAL_PREDICTOR_FEATURES = 185
+
+total_predictor_values = (
+    total_rows * TOTAL_PREDICTOR_FEATURES
+)
+
+overall_nan_percentage = (
+    (total_nan / total_predictor_values) * 100
+    if total_predictor_values > 0
+    else 0
+)
+
+print(
+    f"Overall NaN percentage   : "
+    f"{overall_nan_percentage:.6f}%"
+)
+
+
+# ------------------------------------------------------------
+# 14. Identify the most affected features
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("TOP NaN-AFFECTED FEATURES")
+print("=" * 75)
+
+if len(feature_summary_df) > 0:
+
+    top_features = (
+        feature_summary_df
+        .groupby("feature")["nan_count"]
+        .sum()
+        .sort_values(ascending=False)
+        .head(20)
+    )
+
+    for feature, count in top_features.items():
+
+        print(
+            f"{feature:<40} "
+            f"{int(count):>8,}"
+        )
+
+else:
+
+    print("No affected features.")
+
+
+# ------------------------------------------------------------
+# 15. Important interpretation
+# ------------------------------------------------------------
+
+print("\n" + "=" * 75)
+print("INTERPRETATION")
+print("=" * 75)
+
+if total_nan == 0:
+
+    print(
+        "\nNo NaN values exist in the Phase 4 predictor features."
+    )
+
+    print(
+        "Phase 4 can proceed to final validation and upload."
+    )
+
+else:
+
+    print(
+        "\nNaN values are present in the Phase 4 predictor features."
+    )
+
+    print(
+        "These values have NOT been changed."
+    )
+
+    print(
+        "We must identify why they occur before deciding "
+        "whether to use zero replacement, statistical imputation, "
+        "or preserve them for the later ML preprocessing stage."
+    )
+
+    print(
+        "\nDO NOT upload Phase 4 to Hugging Face yet."
+    )
+
+
+# ------------------------------------------------------------
+# 16. Final status
+# ------------------------------------------------------------
+
+total_elapsed = time.time() - total_start_time
+
+print("\n" + "=" * 75)
+print("STEP 4.8.1 COMPLETE")
+print("=" * 75)
+
+print(
+    f"\nTotal investigation time: "
+    f"{total_elapsed / 60:.2f} minutes"
+)
+
+print(
+    "\nNo Phase 4 data was modified."
+)
+
+print(
+    "No Phase 4 data was uploaded to Hugging Face."
+)
+
+print(
+    "\nNext decision depends on the NaN investigation results."
+)
+===== CODE CELL 22 =====
+# ============================================================
+# PHASE 4 — STEP 4.8.2
+# NaN Cause + Treatment Investigation
+# Runtime-safe version
+# ============================================================
+
+import os
+import glob
+import pandas as pd
+import numpy as np
+import duckdb
+
+from huggingface_hub import login, HfApi, hf_hub_download
+
+# ------------------------------------------------------------
+# 1. Configuration
+# ------------------------------------------------------------
+
+HF_REPO = "PrakulShetty/NetVision-AI-SIH26153"
+HF_REPO_TYPE = "dataset"
+
+PHASE3_DIR = "/content/phase3_final"
+PHASE4_DIR = "/content/phase4_final"
+
+PHASE3_HF_PATH = "processed/phase3/final"
+
+affected_features = [
+    "Flow Byts/s",
+    "Init Fwd Win Byts",
+    "Init Bwd Win Byts"
+]
+
+print("=" * 80)
+print("PHASE 4 — STEP 4.8.2")
+print("NaN Cause + Treatment Investigation")
+print("=" * 80)
+
+# ------------------------------------------------------------
+# 2. Hugging Face authentication
+# ------------------------------------------------------------
+
+print("\n[1/7] Checking Hugging Face authentication...")
+
+try:
+    api = HfApi()
+    repo_info = api.repo_info(
+        repo_id=HF_REPO,
+        repo_type=HF_REPO_TYPE
+    )
+
+    print("Hugging Face authentication: PASS")
+    print(f"Repository verified: {HF_REPO}")
+
+except Exception:
+    print("Authentication/session not available.")
+    print("Opening Hugging Face login...")
+    login()
+
+    api = HfApi()
+    repo_info = api.repo_info(
+        repo_id=HF_REPO,
+        repo_type=HF_REPO_TYPE
+    )
+
+    print("Hugging Face authentication: PASS")
+    print(f"Repository verified: {HF_REPO}")
+
+# ------------------------------------------------------------
+# 3. Recover Phase 3 files if local directory is missing
+# ------------------------------------------------------------
+
+print("\n[2/7] Checking local Phase 3 dataset...")
+
+os.makedirs(PHASE3_DIR, exist_ok=True)
+
+phase3_files = sorted(
+    glob.glob(os.path.join(PHASE3_DIR, "*.csv"))
+)
+
+if len(phase3_files) == 10:
+
+    print("Local Phase 3 dataset already available.")
+    print(f"Files found: {len(phase3_files)}")
+
+else:
+
+    print(
+        f"Local Phase 3 dataset incomplete "
+        f"({len(phase3_files)}/10 files)."
+    )
+
+    print("Recovering verified Phase 3 files from Hugging Face...")
+
+    # --------------------------------------------------------
+    # List files in the verified Phase 3 HF directory
+    # --------------------------------------------------------
+
+    hf_files = api.list_repo_files(
+        repo_id=HF_REPO,
+        repo_type=HF_REPO_TYPE
+    )
+
+    phase3_hf_files = sorted([
+        f for f in hf_files
+        if f.startswith(PHASE3_HF_PATH + "/")
+        and f.lower().endswith(".csv")
+    ])
+
+    print(f"Phase 3 CSV files found on HF: {len(phase3_hf_files)}")
+
+    assert len(phase3_hf_files) == 10, (
+        f"Expected 10 Phase 3 files on HF, "
+        f"found {len(phase3_hf_files)}"
+    )
+
+    # --------------------------------------------------------
+    # Download each Phase 3 file
+    # --------------------------------------------------------
+
+    for i, hf_file in enumerate(phase3_hf_files, start=1):
+
+        filename = os.path.basename(hf_file)
+
+        local_path = os.path.join(
+            PHASE3_DIR,
+            filename
+        )
+
+        print(
+            f"  [{i}/10] Recovering: {filename}"
+        )
+
+        downloaded_path = hf_hub_download(
+            repo_id=HF_REPO,
+            filename=hf_file,
+            repo_type=HF_REPO_TYPE,
+            local_dir=PHASE3_DIR
+        )
+
+    print("Phase 3 recovery completed.")
+
+# ------------------------------------------------------------
+# 4. Verify recovered Phase 3 files
+# ------------------------------------------------------------
+
+print("\n[3/7] Verifying Phase 3 files...")
+
+phase3_files = sorted(
+    glob.glob(os.path.join(PHASE3_DIR, "*.csv"))
+)
+
+assert len(phase3_files) == 10, (
+    f"Expected 10 Phase 3 files, found {len(phase3_files)}"
+)
+
+print(f"Phase 3 files available: {len(phase3_files)}")
+
+# ------------------------------------------------------------
+# 5. Check Phase 4 directory
+# ------------------------------------------------------------
+
+print("\n[4/7] Checking Phase 4 dataset...")
+
+if not os.path.exists(PHASE4_DIR):
+
+    raise FileNotFoundError(
+        f"""
+Phase 4 directory not found:
+
+{PHASE4_DIR}
+
+This means the current Colab runtime also lost the local
+Phase 4 files.
+
+Do NOT recreate or modify the dataset yet.
+We need to recover Phase 4 first.
+"""
+    )
+
+phase4_files = sorted(
+    glob.glob(os.path.join(PHASE4_DIR, "*.csv"))
+)
+
+assert len(phase4_files) == 10, (
+    f"Expected 10 Phase 4 files, found {len(phase4_files)}"
+)
+
+print(f"Phase 4 files available: {len(phase4_files)}")
+
+# ------------------------------------------------------------
+# 6. Investigate Phase 3 source values
+# ------------------------------------------------------------
+
+print("\n[5/7] Investigating Phase 3 source values...")
+
+source_summary = []
+
+for file_path in phase3_files:
+
+    file_name = os.path.basename(file_path)
+
+    query = f"""
+        SELECT
+            "Timestamp",
+            "Label",
+            "Flow Duration",
+            "TotLen Fwd Pkts",
+            "TotLen Bwd Pkts",
+            "Flow Byts/s",
+            "Init Fwd Win Byts",
+            "Init Bwd Win Byts"
+        FROM read_csv_auto(
+            '{file_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+    """
+
+    con = duckdb.connect()
+    df = con.execute(query).fetchdf()
+    con.close()
+
+    for col in [
+        "Flow Duration",
+        "TotLen Fwd Pkts",
+        "TotLen Bwd Pkts",
+        "Flow Byts/s",
+        "Init Fwd Win Byts",
+        "Init Bwd Win Byts"
+    ]:
+        df[col] = pd.to_numeric(
+            df[col],
+            errors="coerce"
+        )
+
+    source_summary.append({
+        "File": file_name,
+        "Rows": len(df),
+
+        "Flow Byts/s NaN":
+            int(df["Flow Byts/s"].isna().sum()),
+
+        "Init Fwd Win Byts NaN":
+            int(df["Init Fwd Win Byts"].isna().sum()),
+
+        "Init Bwd Win Byts NaN":
+            int(df["Init Bwd Win Byts"].isna().sum()),
+
+        "Flow Byts/s -1":
+            int((df["Flow Byts/s"] == -1).sum()),
+
+        "Init Fwd Win Byts -1":
+            int((df["Init Fwd Win Byts"] == -1).sum()),
+
+        "Init Bwd Win Byts -1":
+            int((df["Init Bwd Win Byts"] == -1).sum()),
+
+        "Zero Flow Duration":
+            int((df["Flow Duration"] == 0).sum()),
+
+        "Negative Flow Duration":
+            int((df["Flow Duration"] < 0).sum())
+    })
+
+source_df = pd.DataFrame(source_summary)
+
+display(source_df)
+
+# ------------------------------------------------------------
+# 7. Detailed Flow Byts/s investigation
+# ------------------------------------------------------------
+
+print("\n[6/7] Investigating Flow Byts/s NaNs...")
+
+flow_investigation = []
+
+for file_path in phase3_files:
+
+    file_name = os.path.basename(file_path)
+
+    query = f"""
+        SELECT
+            "Flow Duration",
+            "TotLen Fwd Pkts",
+            "TotLen Bwd Pkts",
+            "Flow Byts/s"
+        FROM read_csv_auto(
+            '{file_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+        WHERE "Flow Byts/s" IS NULL
+    """
+
+    con = duckdb.connect()
+    df_nan = con.execute(query).fetchdf()
+    con.close()
+
+    if len(df_nan) == 0:
+        continue
+
+    duration = pd.to_numeric(
+        df_nan["Flow Duration"],
+        errors="coerce"
+    )
+
+    fwd_bytes = pd.to_numeric(
+        df_nan["TotLen Fwd Pkts"],
+        errors="coerce"
+    )
+
+    bwd_bytes = pd.to_numeric(
+        df_nan["TotLen Bwd Pkts"],
+        errors="coerce"
+    )
+
+    total_bytes = fwd_bytes + bwd_bytes
+
+    flow_investigation.append({
+        "File": file_name,
+        "NaN Flow Byts/s rows": len(df_nan),
+        "Zero Duration rows":
+            int((duration == 0).sum()),
+        "Negative Duration rows":
+            int((duration < 0).sum()),
+        "Positive Duration rows":
+            int((duration > 0).sum()),
+        "Duration NaN rows":
+            int(duration.isna().sum()),
+        "Zero Total Bytes rows":
+            int((total_bytes == 0).sum()),
+        "Positive Total Bytes rows":
+            int((total_bytes > 0).sum()),
+        "Total Bytes NaN rows":
+            int(total_bytes.isna().sum())
+    })
+
+if flow_investigation:
+
+    flow_df = pd.DataFrame(flow_investigation)
+    display(flow_df)
+
+else:
+
+    print("No Phase 3 Flow Byts/s NaNs found.")
+
+# ------------------------------------------------------------
+# 8. Detailed TCP initial window investigation
+# ------------------------------------------------------------
+
+print("\n[7/7] Investigating Init Fwd/Bwd Win Byts NaNs...")
+
+window_investigation = []
+
+for file_path in phase3_files:
+
+    file_name = os.path.basename(file_path)
+
+    query = f"""
+        SELECT
+            "Init Fwd Win Byts",
+            "Init Bwd Win Byts"
+        FROM read_csv_auto(
+            '{file_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+    """
+
+    con = duckdb.connect()
+    df = con.execute(query).fetchdf()
+    con.close()
+
+    fwd = pd.to_numeric(
+        df["Init Fwd Win Byts"],
+        errors="coerce"
+    )
+
+    bwd = pd.to_numeric(
+        df["Init Bwd Win Byts"],
+        errors="coerce"
+    )
+
+    window_investigation.append({
+        "File": file_name,
+
+        "Fwd NaN":
+            int(fwd.isna().sum()),
+
+        "Bwd NaN":
+            int(bwd.isna().sum()),
+
+        "Fwd -1":
+            int((fwd == -1).sum()),
+
+        "Bwd -1":
+            int((bwd == -1).sum()),
+
+        "Fwd Valid":
+            int(fwd.notna().sum()),
+
+        "Bwd Valid":
+            int(bwd.notna().sum())
+    })
+
+window_df = pd.DataFrame(window_investigation)
+
+display(window_df)
+
+# ------------------------------------------------------------
+# Final status
+# ------------------------------------------------------------
+
+print("\n" + "=" * 80)
+print("STEP 4.8.2 COMPLETE")
+print("=" * 80)
+
+print("""
+Investigation completed successfully.
+
+IMPORTANT:
+- No Phase 3 values were modified.
+- No Phase 4 values were modified.
+- No imputation was performed.
+- Nothing was uploaded to Hugging Face.
+- The purpose of this step is diagnosis only.
+
+Review the Flow Byts/s and TCP window investigation results
+before deciding the treatment.
+""")
+===== CODE CELL 24 =====
+# ============================================================
+# PHASE 4 — STEP 4.8.2
+# Corrected Phase 3 Recovery + NaN Investigation
+# ============================================================
+
+import os
+import glob
+import shutil
+import pandas as pd
+import numpy as np
+import duckdb
+
+from huggingface_hub import login, HfApi, hf_hub_download
+
+# ------------------------------------------------------------
+# 1. Configuration
+# ------------------------------------------------------------
+
+HF_REPO = "PrakulShetty/NetVision-AI-SIH26153"
+HF_REPO_TYPE = "dataset"
+
+PHASE3_DIR = "/content/phase3_final"
+PHASE4_DIR = "/content/phase4_final"
+
+PHASE3_HF_PATH = "processed/phase3/final"
+
+affected_features = [
+    "Flow Byts/s",
+    "Init Fwd Win Byts",
+    "Init Bwd Win Byts"
+]
+
+print("=" * 80)
+print("PHASE 4 — STEP 4.8.2")
+print("Corrected Phase 3 Recovery + NaN Investigation")
+print("=" * 80)
+
+# ------------------------------------------------------------
+# 2. Authenticate and verify repository
+# ------------------------------------------------------------
+
+print("\n[1/8] Verifying Hugging Face repository...")
+
+try:
+    api = HfApi()
+    api.repo_info(
+        repo_id=HF_REPO,
+        repo_type=HF_REPO_TYPE
+    )
+    print("Hugging Face authentication: PASS")
+
+except Exception:
+    print("Hugging Face login required.")
+    login()
+
+    api = HfApi()
+    api.repo_info(
+        repo_id=HF_REPO,
+        repo_type=HF_REPO_TYPE
+    )
+    print("Hugging Face authentication: PASS")
+
+print(f"Repository: {HF_REPO}")
+
+# ------------------------------------------------------------
+# 3. Create clean local Phase 3 directory
+# ------------------------------------------------------------
+
+print("\n[2/8] Preparing local Phase 3 directory...")
+
+os.makedirs(PHASE3_DIR, exist_ok=True)
+
+# ------------------------------------------------------------
+# 4. Get exact Phase 3 CSV filenames from HF
+# ------------------------------------------------------------
+
+print("\n[3/8] Reading Phase 3 file list from Hugging Face...")
+
+hf_files = api.list_repo_files(
+    repo_id=HF_REPO,
+    repo_type=HF_REPO_TYPE
+)
+
+phase3_hf_files = sorted([
+    f for f in hf_files
+    if f.startswith(PHASE3_HF_PATH + "/")
+    and f.lower().endswith(".csv")
+])
+
+assert len(phase3_hf_files) == 10, (
+    f"Expected 10 Phase 3 CSV files on HF, "
+    f"found {len(phase3_hf_files)}"
+)
+
+print(f"Phase 3 CSV files on HF: {len(phase3_hf_files)}")
+
+# ------------------------------------------------------------
+# 5. Explicitly recover each file
+# ------------------------------------------------------------
+
+print("\n[4/8] Recovering Phase 3 files...")
+
+for i, hf_file in enumerate(phase3_hf_files, start=1):
+
+    filename = os.path.basename(hf_file)
+
+    target_path = os.path.join(
+        PHASE3_DIR,
+        filename
+    )
+
+    print(f"  [{i}/10] {filename}")
+
+    # Download into HF cache
+    cached_path = hf_hub_download(
+        repo_id=HF_REPO,
+        filename=hf_file,
+        repo_type=HF_REPO_TYPE
+    )
+
+    # Explicitly copy the actual downloaded file
+    shutil.copy2(
+        cached_path,
+        target_path
+    )
+
+    print(
+        f"       Recovered: "
+        f"{os.path.getsize(target_path) / (1024**2):.2f} MB"
+    )
+
+# ------------------------------------------------------------
+# 6. Verify local Phase 3 recovery
+# ------------------------------------------------------------
+
+print("\n[5/8] Verifying local Phase 3 recovery...")
+
+phase3_files = sorted(
+    glob.glob(os.path.join(PHASE3_DIR, "*.csv"))
+)
+
+print(f"Local Phase 3 files found: {len(phase3_files)}")
+
+assert len(phase3_files) == 10, (
+    f"Expected 10 local Phase 3 files, "
+    f"found {len(phase3_files)}"
+)
+
+for file_path in phase3_files:
+    assert os.path.getsize(file_path) > 0, (
+        f"Empty Phase 3 file: {file_path}"
+    )
+
+print("Local Phase 3 recovery: PASS")
+
+# ------------------------------------------------------------
+# 7. Verify Phase 4 local files
+# ------------------------------------------------------------
+
+print("\n[6/8] Checking Phase 4 files...")
+
+if not os.path.exists(PHASE4_DIR):
+
+    raise FileNotFoundError(
+        f"""
+Phase 4 directory does not exist:
+
+{PHASE4_DIR}
+
+The current runtime has lost the local Phase 4 dataset.
+
+Stop here. Do not recreate or modify anything.
+"""
+    )
+
+phase4_files = sorted(
+    glob.glob(os.path.join(PHASE4_DIR, "*.csv"))
+)
+
+print(f"Local Phase 4 files found: {len(phase4_files)}")
+
+assert len(phase4_files) == 10, (
+    f"Expected 10 Phase 4 files, "
+    f"found {len(phase4_files)}"
+)
+
+print("Phase 4 local files: PASS")
+
+# ------------------------------------------------------------
+# 8. Phase 3 source-value investigation
+# ------------------------------------------------------------
+
+print("\n[7/8] Investigating Phase 3 source values...")
+
+source_summary = []
+
+for file_path in phase3_files:
+
+    file_name = os.path.basename(file_path)
+
+    query = f"""
+        SELECT
+            "Timestamp",
+            "Label",
+            "Flow Duration",
+            "TotLen Fwd Pkts",
+            "TotLen Bwd Pkts",
+            "Flow Byts/s",
+            "Init Fwd Win Byts",
+            "Init Bwd Win Byts"
+        FROM read_csv_auto(
+            '{file_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+    """
+
+    con = duckdb.connect()
+
+    df = con.execute(query).fetchdf()
+
+    con.close()
+
+    numeric_cols = [
+        "Flow Duration",
+        "TotLen Fwd Pkts",
+        "TotLen Bwd Pkts",
+        "Flow Byts/s",
+        "Init Fwd Win Byts",
+        "Init Bwd Win Byts"
+    ]
+
+    for col in numeric_cols:
+        df[col] = pd.to_numeric(
+            df[col],
+            errors="coerce"
+        )
+
+    source_summary.append({
+        "File": file_name,
+        "Rows": len(df),
+
+        "Flow Byts/s NaN":
+            int(df["Flow Byts/s"].isna().sum()),
+
+        "Init Fwd Win Byts NaN":
+            int(df["Init Fwd Win Byts"].isna().sum()),
+
+        "Init Bwd Win Byts NaN":
+            int(df["Init Bwd Win Byts"].isna().sum()),
+
+        "Flow Byts/s -1":
+            int((df["Flow Byts/s"] == -1).sum()),
+
+        "Init Fwd Win Byts -1":
+            int((df["Init Fwd Win Byts"] == -1).sum()),
+
+        "Init Bwd Win Byts -1":
+            int((df["Init Bwd Win Byts"] == -1).sum()),
+
+        "Zero Flow Duration":
+            int((df["Flow Duration"] == 0).sum()),
+
+        "Negative Flow Duration":
+            int((df["Flow Duration"] < 0).sum())
+    })
+
+source_df = pd.DataFrame(source_summary)
+
+display(source_df)
+
+# ------------------------------------------------------------
+# Flow Byts/s investigation
+# ------------------------------------------------------------
+
+print("\n[8/8] Detailed NaN cause investigation...")
+
+print("\n" + "=" * 80)
+print("A. FLOW BYTES/SECOND")
+print("=" * 80)
+
+flow_investigation = []
+
+for file_path in phase3_files:
+
+    file_name = os.path.basename(file_path)
+
+    query = f"""
+        SELECT
+            "Flow Duration",
+            "TotLen Fwd Pkts",
+            "TotLen Bwd Pkts",
+            "Flow Byts/s"
+        FROM read_csv_auto(
+            '{file_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+        WHERE "Flow Byts/s" IS NULL
+    """
+
+    con = duckdb.connect()
+
+    df_nan = con.execute(query).fetchdf()
+
+    con.close()
+
+    if len(df_nan) == 0:
+        continue
+
+    duration = pd.to_numeric(
+        df_nan["Flow Duration"],
+        errors="coerce"
+    )
+
+    fwd_bytes = pd.to_numeric(
+        df_nan["TotLen Fwd Pkts"],
+        errors="coerce"
+    )
+
+    bwd_bytes = pd.to_numeric(
+        df_nan["TotLen Bwd Pkts"],
+        errors="coerce"
+    )
+
+    total_bytes = fwd_bytes + bwd_bytes
+
+    flow_investigation.append({
+        "File": file_name,
+        "NaN Flow Byts/s": len(df_nan),
+        "Zero Duration":
+            int((duration == 0).sum()),
+        "Positive Duration":
+            int((duration > 0).sum()),
+        "Negative Duration":
+            int((duration < 0).sum()),
+        "Duration NaN":
+            int(duration.isna().sum()),
+        "Zero Total Bytes":
+            int((total_bytes == 0).sum()),
+        "Positive Total Bytes":
+            int((total_bytes > 0).sum()),
+        "Total Bytes NaN":
+            int(total_bytes.isna().sum())
+    })
+
+if flow_investigation:
+
+    flow_df = pd.DataFrame(flow_investigation)
+
+    display(flow_df)
+
+else:
+
+    print("No Flow Byts/s NaNs found in Phase 3.")
+
+# ------------------------------------------------------------
+# Initial TCP window investigation
+# ------------------------------------------------------------
+
+print("\n" + "=" * 80)
+print("B. INITIAL TCP WINDOW VALUES")
+print("=" * 80)
+
+window_investigation = []
+
+for file_path in phase3_files:
+
+    file_name = os.path.basename(file_path)
+
+    query = f"""
+        SELECT
+            "Init Fwd Win Byts",
+            "Init Bwd Win Byts"
+        FROM read_csv_auto(
+            '{file_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+    """
+
+    con = duckdb.connect()
+
+    df = con.execute(query).fetchdf()
+
+    con.close()
+
+    fwd = pd.to_numeric(
+        df["Init Fwd Win Byts"],
+        errors="coerce"
+    )
+
+    bwd = pd.to_numeric(
+        df["Init Bwd Win Byts"],
+        errors="coerce"
+    )
+
+    window_investigation.append({
+        "File": file_name,
+        "Fwd NaN": int(fwd.isna().sum()),
+        "Bwd NaN": int(bwd.isna().sum()),
+        "Fwd -1": int((fwd == -1).sum()),
+        "Bwd -1": int((bwd == -1).sum()),
+        "Fwd Valid": int(fwd.notna().sum()),
+        "Bwd Valid": int(bwd.notna().sum())
+    })
+
+window_df = pd.DataFrame(window_investigation)
+
+display(window_df)
+
+# ------------------------------------------------------------
+# Representative source records
+# ------------------------------------------------------------
+
+print("\n" + "=" * 80)
+print("C. REPRESENTATIVE SOURCE RECORDS")
+print("=" * 80)
+
+found_records = False
+
+for file_path in phase3_files:
+
+    file_name = os.path.basename(file_path)
+
+    query = f"""
+        SELECT
+            "Timestamp",
+            "Label",
+            "Flow Duration",
+            "TotLen Fwd Pkts",
+            "TotLen Bwd Pkts",
+            "Flow Byts/s",
+            "Init Fwd Win Byts",
+            "Init Bwd Win Byts"
+        FROM read_csv_auto(
+            '{file_path}',
+            header=true,
+            all_varchar=true,
+            strict_mode=false
+        )
+        WHERE
+            "Flow Byts/s" IS NULL
+            OR "Init Fwd Win Byts" IS NULL
+            OR "Init Bwd Win Byts" IS NULL
+        LIMIT 10
+    """
+
+    con = duckdb.connect()
+
+    sample = con.execute(query).fetchdf()
+
+    con.close()
+
+    if len(sample) > 0:
+
+        print(f"\nFile: {file_name}")
+
+        display(sample)
+
+        found_records = True
+
+        break
+
+if not found_records:
+    print("No representative NaN records found.")
+
+# ------------------------------------------------------------
+# Final status
+# ------------------------------------------------------------
+
+print("\n" + "=" * 80)
+print("STEP 4.8.2 DIAGNOSTIC INVESTIGATION COMPLETE")
+print("=" * 80)
+
+print("""
+Phase 3 was successfully recovered from the verified Hugging Face
+repository.
+
+Phase 3 remains read-only.
+
+No Phase 4 values were changed.
+No imputation was performed.
+No Phase 4 files were uploaded.
+
+The displayed investigation results will be used to determine
+the scientifically appropriate NaN treatment in Step 4.8.3.
+""")
+===== CODE CELL 26 =====
+# ============================================================
+# PHASE 4 — STEP 4.8.3
+# Apply Justified NaN Treatment
+# ============================================================
+
+import os
+import glob
+import shutil
+import pandas as pd
+import numpy as np
+
+# ------------------------------------------------------------
+# 1. Configuration
+# ------------------------------------------------------------
+
+PHASE4_DIR = "/content/phase4_final"
+BACKUP_DIR = "/content/phase4_before_nan_treatment"
+
+print("=" * 80)
+print("PHASE 4 — STEP 4.8.3")
+print("Apply Justified NaN Treatment")
+print("=" * 80)
+
+# ------------------------------------------------------------
+# 2. Verify Phase 4 dataset
+# ------------------------------------------------------------
+
+assert os.path.exists(PHASE4_DIR), (
+    f"Phase 4 directory not found: {PHASE4_DIR}"
+)
+
+phase4_files = sorted(
+    glob.glob(os.path.join(PHASE4_DIR, "*.csv"))
+)
+
+assert len(phase4_files) == 10, (
+    f"Expected 10 Phase 4 files, found {len(phase4_files)}"
+)
+
+print(f"\nPhase 4 files found: {len(phase4_files)}")
+
+# ------------------------------------------------------------
+# 3. Create a backup before modification
+# ------------------------------------------------------------
+
+print("\nCreating safety backup...")
+
+if os.path.exists(BACKUP_DIR):
+    shutil.rmtree(BACKUP_DIR)
+
+shutil.copytree(
+    PHASE4_DIR,
+    BACKUP_DIR
+)
+
+backup_files = sorted(
+    glob.glob(os.path.join(BACKUP_DIR, "*.csv"))
+)
+
+assert len(backup_files) == 10
+
+print(f"Backup created: {BACKUP_DIR}")
+print("Backup files: 10/10")
+
+# ------------------------------------------------------------
+# 4. Define affected columns
+# ------------------------------------------------------------
+
+flow_rate_columns = [
+    "Flow Byts/s_mean",
+    "Flow Byts/s_max"
+]
+
+tcp_window_columns = [
+    "Init Fwd Win Byts_mean",
+    "Init Fwd Win Byts_min",
+    "Init Fwd Win Byts_max",
+    "Init Bwd Win Byts_mean",
+    "Init Bwd Win Byts_min",
+    "Init Bwd Win Byts_max"
+]
+
+required_columns = (
+    flow_rate_columns +
+    tcp_window_columns
+)
+
+# ------------------------------------------------------------
+# 5. Process every Phase 4 file
+# ------------------------------------------------------------
+
+print("\nApplying treatment...")
+
+treatment_summary = []
+
+for i, file_path in enumerate(phase4_files, start=1):
+
+    file_name = os.path.basename(file_path)
+
+    print(f"\n[{i}/10] {file_name}")
+
+    # --------------------------------------------------------
+    # Read Phase 4 temporal dataset
+    # --------------------------------------------------------
+
+    df = pd.read_csv(file_path)
+
+    original_rows = len(df)
+    original_columns = len(df.columns)
+
+    # --------------------------------------------------------
+    # Verify required columns
+    # --------------------------------------------------------
+
+    missing_columns = [
+        col for col in required_columns
+        if col not in df.columns
+    ]
+
+    assert not missing_columns, (
+        f"Missing required columns in {file_name}: "
+        f"{missing_columns}"
+    )
+
+    # --------------------------------------------------------
+    # Count NaNs BEFORE treatment
+    # --------------------------------------------------------
+
+    before_flow = int(
+        df[flow_rate_columns].isna().sum().sum()
+    )
+
+    before_tcp = int(
+        df[tcp_window_columns].isna().sum().sum()
+    )
+
+    # --------------------------------------------------------
+    # Create missingness indicators BEFORE filling
+    #
+    # 1 = source aggregate was unavailable
+    # 0 = source aggregate was available
+    # --------------------------------------------------------
+
+    for col in tcp_window_columns:
+
+        indicator_name = f"{col}_missing"
+
+        df[indicator_name] = (
+            df[col].isna().astype("int8")
+        )
+
+    # --------------------------------------------------------
+    # Treat Flow Byts/s undefined aggregates
+    # --------------------------------------------------------
+
+    for col in flow_rate_columns:
+
+        df[col] = df[col].fillna(0)
+
+    # --------------------------------------------------------
+    # Treat TCP initial-window aggregates
+    # --------------------------------------------------------
+
+    for col in tcp_window_columns:
+
+        df[col] = df[col].fillna(0)
+
+    # --------------------------------------------------------
+    # Count NaNs AFTER treatment
+    # --------------------------------------------------------
+
+    after_flow = int(
+        df[flow_rate_columns].isna().sum().sum()
+    )
+
+    after_tcp = int(
+        df[tcp_window_columns].isna().sum().sum()
+    )
+
+    # --------------------------------------------------------
+    # Verify indicator columns
+    # --------------------------------------------------------
+
+    indicator_columns = [
+        f"{col}_missing"
+        for col in tcp_window_columns
+    ]
+
+    for col in indicator_columns:
+
+        assert set(
+            df[col].dropna().unique()
+        ).issubset({0, 1}), (
+            f"Invalid values in indicator {col}"
+        )
+
+    # --------------------------------------------------------
+    # Verify no NaNs remain in treated columns
+    # --------------------------------------------------------
+
+    assert after_flow == 0, (
+        f"Flow rate NaNs remain in {file_name}"
+    )
+
+    assert after_tcp == 0, (
+        f"TCP window NaNs remain in {file_name}"
+    )
+
+    # --------------------------------------------------------
+    # Preserve row count
+    # --------------------------------------------------------
+
+    assert len(df) == original_rows, (
+        f"Row count changed in {file_name}"
+    )
+
+    # --------------------------------------------------------
+    # Save modified Phase 4 file
+    # --------------------------------------------------------
+
+    df.to_csv(
+        file_path,
+        index=False
+    )
+
+    treatment_summary.append({
+        "File": file_name,
+        "Rows": original_rows,
+        "Columns Before": original_columns,
+        "Columns After": len(df.columns),
+        "Flow NaNs Before": before_flow,
+        "Flow NaNs After": after_flow,
+        "TCP NaNs Before": before_tcp,
+        "TCP NaNs After": after_tcp,
+        "Missing Indicators Added": len(indicator_columns)
+    })
+
+    print(
+        f"  Flow NaNs : {before_flow:,} → {after_flow:,}"
+    )
+
+    print(
+        f"  TCP NaNs  : {before_tcp:,} → {after_tcp:,}"
+    )
+
+    print(
+        f"  Columns   : {original_columns} → {len(df.columns)}"
+    )
+
+# ------------------------------------------------------------
+# 6. Display treatment summary
+# ------------------------------------------------------------
+
+summary_df = pd.DataFrame(treatment_summary)
+
+print("\n" + "=" * 80)
+print("TREATMENT SUMMARY")
+print("=" * 80)
+
+display(summary_df)
+
+# ------------------------------------------------------------
+# 7. Overall totals
+# ------------------------------------------------------------
+
+total_flow_before = int(
+    summary_df["Flow NaNs Before"].sum()
+)
+
+total_flow_after = int(
+    summary_df["Flow NaNs After"].sum()
+)
+
+total_tcp_before = int(
+    summary_df["TCP NaNs Before"].sum()
+)
+
+total_tcp_after = int(
+    summary_df["TCP NaNs After"].sum()
+)
+
+print("\nOverall NaN treatment:")
+print(f"  Flow Byts/s NaNs : {total_flow_before:,} → {total_flow_after:,}")
+print(f"  TCP window NaNs  : {total_tcp_before:,} → {total_tcp_after:,}")
+
+# ------------------------------------------------------------
+# 8. Verify every Phase 4 file still exists
+# ------------------------------------------------------------
+
+final_files = sorted(
+    glob.glob(os.path.join(PHASE4_DIR, "*.csv"))
+)
+
+assert len(final_files) == 10
+
+# ------------------------------------------------------------
+# 9. Final treatment assertions
+# ------------------------------------------------------------
+
+assert total_flow_after == 0
+assert total_tcp_after == 0
+
+assert (
+    summary_df["Rows"].sum()
+    == 15822221 - 10 * 0
+)
+
+print("\n" + "=" * 80)
+print("STEP 4.8.3 COMPLETE")
+print("=" * 80)
+
+print("""
+NaN treatment has been applied successfully.
+
+IMPORTANT:
+- Phase 3 was NOT modified.
+- Phase 4 was modified locally.
+- A complete pre-treatment backup exists.
+- Flow Byts/s undefined aggregates were represented as 0.
+- TCP-window unavailable aggregates were represented as 0.
+- TCP-window missingness indicators were added.
+- Row counts were preserved.
+- No Hugging Face upload was performed.
+
+NEXT:
+Step 4.8.4 — Final Phase 4 Validation
+""")
+===== CODE CELL 28 =====
+# ============================================================
+# PHASE 4 — STEP 4.8.4
+# SCHEMA DIAGNOSTIC
+# ============================================================
+
+import os
+import glob
+import pandas as pd
+
+PHASE4_DIR = "/content/phase4_final"
+
+print("=" * 80)
+print("PHASE 4 — STEP 4.8.4")
+print("SCHEMA DIAGNOSTIC")
+print("=" * 80)
+
+# ------------------------------------------------------------
+# 1. Locate Phase 4 files
+# ------------------------------------------------------------
+
+assert os.path.exists(PHASE4_DIR), (
+    f"Phase 4 directory not found: {PHASE4_DIR}"
+)
+
+phase4_files = sorted(
+    glob.glob(os.path.join(PHASE4_DIR, "*.csv"))
+)
+
+assert len(phase4_files) == 10, (
+    f"Expected 10 Phase 4 files, found {len(phase4_files)}"
+)
+
+print(f"\nPhase 4 files found: {len(phase4_files)}")
+
+# ------------------------------------------------------------
+# 2. Inspect every file header
+# ------------------------------------------------------------
+
+print("\n" + "=" * 80)
+print("FILE SCHEMA INSPECTION")
+print("=" * 80)
+
+schema_results = []
+
+for i, file_path in enumerate(phase4_files, start=1):
+
+    file_name = os.path.basename(file_path)
+
+    print(f"\n[{i}/10] {file_name}")
+
+    # Read only header
+    header_df = pd.read_csv(
+        file_path,
+        nrows=0
+    )
+
+    columns = list(header_df.columns)
+
+    print(f"Number of columns: {len(columns)}")
+
+    print("\nFirst 20 columns:")
+    for j, col in enumerate(columns[:20], start=1):
+        print(f"  {j:2d}. {repr(col)}")
+
+    # Search timestamp-like columns
+    timestamp_candidates = [
+        col for col in columns
+        if "timestamp" in str(col).lower()
+    ]
+
+    print("\nTimestamp-like columns:")
+    if timestamp_candidates:
+        for col in timestamp_candidates:
+            print(f"  {repr(col)}")
+    else:
+        print("  NONE")
+
+    # Search target/state columns
+    state_candidates = [
+        col for col in columns
+        if (
+            "state" in str(col).lower()
+            or "target" in str(col).lower()
+        )
+    ]
+
+    print("\nState/target-like columns:")
+    if state_candidates:
+        for col in state_candidates:
+            print(f"  {repr(col)}")
+    else:
+        print("  NONE")
+
+    schema_results.append({
+        "File": file_name,
+        "Columns": len(columns),
+        "Has Timestamp": "Timestamp" in columns,
+        "Timestamp Candidates": ", ".join(
+            map(str, timestamp_candidates)
+        ),
+        "State/Target Candidates": ", ".join(
+            map(str, state_candidates)
+        )
+    })
+
+# ------------------------------------------------------------
+# 3. Display schema summary
+# ------------------------------------------------------------
+
+schema_df = pd.DataFrame(schema_results)
+
+print("\n" + "=" * 80)
+print("SCHEMA SUMMARY")
+print("=" * 80)
+
+display(schema_df)
+
+# ------------------------------------------------------------
+# 4. Inspect first record of first file
+# ------------------------------------------------------------
+
+print("\n" + "=" * 80)
+print("FIRST FILE — SAMPLE RECORD")
+print("=" * 80)
+
+first_file = phase4_files[0]
+
+sample_df = pd.read_csv(
+    first_file,
+    nrows=3
+)
+
+print(f"File: {os.path.basename(first_file)}")
+print(f"Shape: {sample_df.shape}")
+
+print("\nColumn names:")
+for i, col in enumerate(sample_df.columns, start=1):
+    print(f"{i:3d}. {repr(col)}")
+
+print("\nFirst 3 records:")
+display(sample_df.head(3))
+
+# ------------------------------------------------------------
+# 5. Check for accidental index column
+# ------------------------------------------------------------
+
+print("\n" + "=" * 80)
+print("INDEX-COLUMN CHECK")
+print("=" * 80)
+
+possible_index_columns = [
+    col for col in sample_df.columns
+    if (
+        str(col).lower().startswith("unnamed")
+        or str(col).strip() == ""
+    )
+]
+
+if possible_index_columns:
+    print("Possible accidental index columns:")
+    for col in possible_index_columns:
+        print(f"  {repr(col)}")
+else:
+    print("No obvious accidental index column detected.")
+
+# ------------------------------------------------------------
+# 6. Final diagnostic status
+# ------------------------------------------------------------
+
+print("\n" + "=" * 80)
+print("SCHEMA DIAGNOSTIC COMPLETE")
+print("=" * 80)
+
+print("""
+No files were modified.
+
+The exact current Phase 4 column names have been printed above.
+
+Use this output to determine the correct validation schema before
+running the final validation gate.
+""")
+===== CODE CELL 30 =====
+# ============================================================
+# PHASE 4 — STEP 4.8.4
+# FINAL PHASE 4 VALIDATION — CORRECTED SCHEMA
+# ============================================================
+
+import os
+import glob
+import numpy as np
+import pandas as pd
+
+# ------------------------------------------------------------
+# 1. Configuration
+# ------------------------------------------------------------
+
+PHASE4_DIR = "/content/phase4_final"
+
+EXPECTED_FILES = 10
+EXPECTED_TOTAL_ROWS = 1008
+EXPECTED_COLUMNS = 198
+
+# Correct temporal column
+TIME_COLUMN = "window_start"
+
+# Expected temporal row counts from Step 4.7
+EXPECTED_ROWS = {
+    "Friday-02-03-2018_TrafficForML_CICFlowMeter.csv": 104,
+    "Friday-16-02-2018_TrafficForML_CICFlowMeter.csv": 63,
+    "Friday-23-02-2018_TrafficForML_CICFlowMeter.csv": 110,
+    "Thuesday-20-02-2018_TrafficForML_CICFlowMeter.csv": 142,
+    "Thursday-01-03-2018_TrafficForML_CICFlowMeter.csv": 113,
+    "Thursday-15-02-2018_TrafficForML_CICFlowMeter.csv": 113,
+    "Thursday-22-02-2018_TrafficForML_CICFlowMeter.csv": 109,
+    "Wednesday-14-02-2018_TrafficForML_CICFlowMeter.csv": 108,
+    "Wednesday-21-02-2018_TrafficForML_CICFlowMeter.csv": 33,
+    "Wednesday-28-02-2018_TrafficForML_CICFlowMeter.csv": 113
+}
+
+# Required structural columns
+required_columns = {
+    "window_start",
+    "dataset_day",
+    "current_attack_state",
+    "attack_flow_count",
+    "total_flow_count",
+    "current_attack_ratio",
+    "future_attack_state"
+}
+
+# Six missingness indicators
+indicator_columns = [
+    "Init Fwd Win Byts_mean_missing",
+    "Init Fwd Win Byts_min_missing",
+    "Init Fwd Win Byts_max_missing",
+    "Init Bwd Win Byts_mean_missing",
+    "Init Bwd Win Byts_min_missing",
+    "Init Bwd Win Byts_max_missing"
+]
+
+# ------------------------------------------------------------
+# 2. Start
+# ------------------------------------------------------------
+
+print("=" * 80)
+print("PHASE 4 — STEP 4.8.4")
+print("FINAL PHASE 4 VALIDATION")
+print("=" * 80)
+
+assert os.path.exists(PHASE4_DIR), (
+    f"Phase 4 directory not found: {PHASE4_DIR}"
+)
+
+phase4_files = sorted(
+    glob.glob(os.path.join(PHASE4_DIR, "*.csv"))
+)
+
+print(f"\nPhase 4 files found: {len(phase4_files)}")
+
+assert len(phase4_files) == EXPECTED_FILES, (
+    f"Expected {EXPECTED_FILES} files, found {len(phase4_files)}"
+)
+
+# ------------------------------------------------------------
+# 3. Per-file validation
+# ------------------------------------------------------------
+
+print("\n" + "=" * 80)
+print("PER-FILE VALIDATION")
+print("=" * 80)
+
+validation_results = []
+
+total_rows = 0
+total_nan = 0
+total_inf = 0
+total_duplicate_windows = 0
+total_order_violations = 0
+total_alignment_failures = 0
+total_invalid_targets = 0
+total_invalid_current_states = 0
+total_flow_count_issues = 0
+total_invalid_indicators = 0
+total_leakage_issues = 0
+
+reference_predictor_columns = None
+
+for i, file_path in enumerate(phase4_files, start=1):
+
+    file_name = os.path.basename(file_path)
+
+    print(f"\n[{i}/10] {file_name}")
+
+    # --------------------------------------------------------
+    # Read file
+    # --------------------------------------------------------
+
+    df = pd.read_csv(file_path)
+
+    rows = len(df)
+    cols = len(df.columns)
+
+    total_rows += rows
+
+    # --------------------------------------------------------
+    # A. Row count
+    # --------------------------------------------------------
+
+    expected_rows = EXPECTED_ROWS[file_name]
+
+    row_count_pass = (
+        rows == expected_rows
+    )
+
+    # --------------------------------------------------------
+    # B. Column count
+    # --------------------------------------------------------
+
+    column_count_pass = (
+        cols == EXPECTED_COLUMNS
+    )
+
+    # --------------------------------------------------------
+    # C. Required columns
+    # --------------------------------------------------------
+
+    missing_required = sorted(
+        required_columns - set(df.columns)
+    )
+
+    required_columns_pass = (
+        len(missing_required) == 0
+    )
+
+    # --------------------------------------------------------
+    # D. Time column
+    # --------------------------------------------------------
+
+    window_start = pd.to_datetime(
+        df[TIME_COLUMN],
+        errors="coerce"
+    )
+
+    invalid_timestamps = int(
+        window_start.isna().sum()
+    )
+
+    timestamp_pass = (
+        invalid_timestamps == 0
+    )
+
+    # --------------------------------------------------------
+    # E. Chronological ordering
+    # --------------------------------------------------------
+
+    order_violations = int(
+        (
+            window_start.diff().dt.total_seconds()
+            < 0
+        ).sum()
+    )
+
+    chronological_pass = (
+        order_violations == 0
+    )
+
+    total_order_violations += order_violations
+
+    # --------------------------------------------------------
+    # F. Five-minute alignment
+    # --------------------------------------------------------
+
+    alignment_failures = int(
+        (
+            (window_start.dt.minute % 5 != 0)
+            |
+            (window_start.dt.second != 0)
+            |
+            (window_start.dt.microsecond != 0)
+        ).sum()
+    )
+
+    alignment_pass = (
+        alignment_failures == 0
+    )
+
+    total_alignment_failures += alignment_failures
+
+    # --------------------------------------------------------
+    # G. Duplicate temporal windows
+    # --------------------------------------------------------
+
+    duplicate_windows = int(
+        window_start.duplicated().sum()
+    )
+
+    duplicate_pass = (
+        duplicate_windows == 0
+    )
+
+    total_duplicate_windows += duplicate_windows
+
+    # --------------------------------------------------------
+    # H. NaN validation
+    # --------------------------------------------------------
+
+    nan_count = int(
+        df.isna().sum().sum()
+    )
+
+    nan_pass = (
+        nan_count == 0
+    )
+
+    total_nan += nan_count
+
+    # --------------------------------------------------------
+    # I. Infinite-value validation
+    # --------------------------------------------------------
+
+    numeric_df = df.select_dtypes(
+        include=[np.number]
+    )
+
+    if numeric_df.shape[1] > 0:
+
+        inf_count = int(
+            np.isinf(
+                numeric_df.to_numpy(
+                    dtype=float
+                )
+            ).sum()
+        )
+
+    else:
+
+        inf_count = 0
+
+    inf_pass = (
+        inf_count == 0
+    )
+
+    total_inf += inf_count
+
+    # --------------------------------------------------------
+    # J. Future attack state
+    # --------------------------------------------------------
+
+    future_numeric = pd.to_numeric(
+        df["future_attack_state"],
+        errors="coerce"
+    )
+
+    invalid_future_targets = int(
+        (
+            future_numeric.isna()
+            |
+            ~future_numeric.isin([0, 1])
+        ).sum()
+    )
+
+    total_invalid_targets += (
+        invalid_future_targets
+    )
+
+    target_pass = (
+        invalid_future_targets == 0
+    )
+
+    # --------------------------------------------------------
+    # K. Current attack state
+    # --------------------------------------------------------
+
+    current_numeric = pd.to_numeric(
+        df["current_attack_state"],
+        errors="coerce"
+    )
+
+    invalid_current = int(
+        (
+            current_numeric.isna()
+            |
+            ~current_numeric.isin([0, 1])
+        ).sum()
+    )
+
+    total_invalid_current_states += (
+        invalid_current
+    )
+
+    current_state_pass = (
+        invalid_current == 0
+    )
+
+    # --------------------------------------------------------
+    # L. Flow count validation
+    # --------------------------------------------------------
+
+    flow_count = pd.to_numeric(
+        df["flow_count"],
+        errors="coerce"
+    )
+
+    total_flow_count = pd.to_numeric(
+        df["total_flow_count"],
+        errors="coerce"
+    )
+
+    attack_flow_count = pd.to_numeric(
+        df["attack_flow_count"],
+        errors="coerce"
+    )
+
+    flow_count_issues = int(
+        (
+            flow_count.isna()
+            |
+            total_flow_count.isna()
+            |
+            attack_flow_count.isna()
+            |
+            (flow_count <= 0)
+            |
+            (total_flow_count <= 0)
+            |
+            (attack_flow_count < 0)
+            |
+            (attack_flow_count > total_flow_count)
+            |
+            (flow_count != total_flow_count)
+        ).sum()
+    )
+
+    total_flow_count_issues += flow_count_issues
+
+    flow_count_pass = (
+        flow_count_issues == 0
+    )
+
+    # --------------------------------------------------------
+    # M. Current attack ratio validation
+    # --------------------------------------------------------
+
+    attack_ratio = pd.to_numeric(
+        df["current_attack_ratio"],
+        errors="coerce"
+    )
+
+    invalid_ratio = int(
+        (
+            attack_ratio.isna()
+            |
+            (attack_ratio < 0)
+            |
+            (attack_ratio > 1)
+        ).sum()
+    )
+
+    ratio_pass = (
+        invalid_ratio == 0
+    )
+
+    # --------------------------------------------------------
+    # N. Missingness indicators
+    # --------------------------------------------------------
+
+    missing_indicator_columns = [
+        col
+        for col in indicator_columns
+        if col not in df.columns
+    ]
+
+    invalid_indicators = 0
+
+    if missing_indicator_columns:
+
+        invalid_indicators += len(
+            missing_indicator_columns
+        )
+
+    else:
+
+        for col in indicator_columns:
+
+            values = pd.to_numeric(
+                df[col],
+                errors="coerce"
+            )
+
+            invalid_indicators += int(
+                values.isna().sum()
+            )
+
+            invalid_indicators += int(
+                (~values.isin([0, 1])).sum()
+            )
+
+    total_invalid_indicators += (
+        invalid_indicators
+    )
+
+    indicator_pass = (
+        invalid_indicators == 0
+    )
+
+    # --------------------------------------------------------
+    # O. Predictor schema consistency
+    # --------------------------------------------------------
+
+    excluded_columns = {
+        "window_start",
+        "dataset_day",
+        "current_attack_state",
+        "attack_flow_count",
+        "total_flow_count",
+        "current_attack_ratio",
+        "future_attack_state"
+    }
+
+    predictor_columns = [
+        col
+        for col in df.columns
+        if col not in excluded_columns
+    ]
+
+    if reference_predictor_columns is None:
+
+        reference_predictor_columns = predictor_columns
+        schema_pass = True
+
+    else:
+
+        schema_pass = (
+            predictor_columns
+            == reference_predictor_columns
+        )
+
+    # --------------------------------------------------------
+    # P. Leakage check
+    # --------------------------------------------------------
+
+    leakage_columns = [
+        col
+        for col in predictor_columns
+        if (
+            "future" in col.lower()
+            or "target" in col.lower()
+        )
+    ]
+
+    leakage_issues = len(
+        leakage_columns
+    )
+
+    total_leakage_issues += (
+        leakage_issues
+    )
+
+    leakage_pass = (
+        leakage_issues == 0
+    )
+
+    # --------------------------------------------------------
+    # Q. Overall file status
+    # --------------------------------------------------------
+
+    file_pass = all([
+        row_count_pass,
+        column_count_pass,
+        required_columns_pass,
+        timestamp_pass,
+        chronological_pass,
+        alignment_pass,
+        duplicate_pass,
+        nan_pass,
+        inf_pass,
+        target_pass,
+        current_state_pass,
+        flow_count_pass,
+        ratio_pass,
+        indicator_pass,
+        schema_pass,
+        leakage_pass
+    ])
+
+    validation_results.append({
+        "File": file_name,
+        "Rows": rows,
+        "Expected Rows": expected_rows,
+        "Columns": cols,
+        "NaN": nan_count,
+        "Inf": inf_count,
+        "Duplicate Windows": duplicate_windows,
+        "Order Violations": order_violations,
+        "Alignment Failures": alignment_failures,
+        "Invalid Targets": invalid_future_targets,
+        "Invalid Current States": invalid_current,
+        "Flow Count Issues": flow_count_issues,
+        "Ratio Issues": invalid_ratio,
+        "Invalid Indicators": invalid_indicators,
+        "Predictor Features": len(predictor_columns),
+        "Leakage Issues": leakage_issues,
+        "Status": "PASS" if file_pass else "FAIL"
+    })
+
+    print(
+        f"  Rows: {rows:,}/{expected_rows:,} "
+        f"{'PASS' if row_count_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  Columns: {cols}/{EXPECTED_COLUMNS} "
+        f"{'PASS' if column_count_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  Time column: {TIME_COLUMN} "
+        f"{'PASS' if timestamp_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  NaN: {nan_count:,} "
+        f"{'PASS' if nan_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  Infinite: {inf_count:,} "
+        f"{'PASS' if inf_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  Chronological ordering: "
+        f"{'PASS' if chronological_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  5-minute alignment: "
+        f"{'PASS' if alignment_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  Duplicate windows: "
+        f"{'PASS' if duplicate_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  Future target: "
+        f"{'PASS' if target_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  Current state: "
+        f"{'PASS' if current_state_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  Flow counts: "
+        f"{'PASS' if flow_count_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  Missing indicators: "
+        f"{'PASS' if indicator_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  Leakage: "
+        f"{'PASS' if leakage_pass else 'FAIL'}"
+    )
+
+    print(
+        f"  FILE STATUS: "
+        f"{'PASS' if file_pass else 'FAIL'}"
+    )
+
+# ------------------------------------------------------------
+# 4. Results table
+# ------------------------------------------------------------
+
+results_df = pd.DataFrame(
+    validation_results
+)
+
+print("\n" + "=" * 80)
+print("COMPLETE VALIDATION TABLE")
+print("=" * 80)
+
+display(results_df)
+
+# ------------------------------------------------------------
+# 5. Global validation
+# ------------------------------------------------------------
+
+print("\n" + "=" * 80)
+print("GLOBAL VALIDATION")
+print("=" * 80)
+
+expected_total_from_files = sum(
+    EXPECTED_ROWS.values()
+)
+
+assert (
+    expected_total_from_files
+    == EXPECTED_TOTAL_ROWS
+)
+
+all_files_pass = (
+    len(results_df) == EXPECTED_FILES
+    and
+    (results_df["Status"] == "PASS").all()
+)
+
+total_rows_pass = (
+    total_rows == EXPECTED_TOTAL_ROWS
+)
+
+total_columns_pass = (
+    results_df["Columns"].nunique() == 1
+    and
+    results_df["Columns"].iloc[0]
+    == EXPECTED_COLUMNS
+)
+
+total_nan_pass = (
+    total_nan == 0
+)
+
+total_inf_pass = (
+    total_inf == 0
+)
+
+total_duplicate_pass = (
+    total_duplicate_windows == 0
+)
+
+total_order_pass = (
+    total_order_violations == 0
+)
+
+total_alignment_pass = (
+    total_alignment_failures == 0
+)
+
+total_target_pass = (
+    total_invalid_targets == 0
+)
+
+total_current_state_pass = (
+    total_invalid_current_states == 0
+)
+
+total_flow_count_pass = (
+    total_flow_count_issues == 0
+)
+
+total_indicator_pass = (
+    total_invalid_indicators == 0
+)
+
+total_leakage_pass = (
+    total_leakage_issues == 0
+)
+
+FINAL_VALIDATION_PASS = all([
+    all_files_pass,
+    total_rows_pass,
+    total_columns_pass,
+    total_nan_pass,
+    total_inf_pass,
+    total_duplicate_pass,
+    total_order_pass,
+    total_alignment_pass,
+    total_target_pass,
+    total_current_state_pass,
+    total_flow_count_pass,
+    total_indicator_pass,
+    total_leakage_pass
+])
+
+# ------------------------------------------------------------
+# 6. Print global results
+# ------------------------------------------------------------
+
+print(
+    f"Files:                  "
+    f"{len(results_df)}/{EXPECTED_FILES} "
+    f"{'PASS' if all_files_pass else 'FAIL'}"
+)
+
+print(
+    f"Total temporal rows:    "
+    f"{total_rows:,}/{EXPECTED_TOTAL_ROWS:,} "
+    f"{'PASS' if total_rows_pass else 'FAIL'}"
+)
+
+print(
+    f"Columns:                "
+    f"{EXPECTED_COLUMNS} "
+    f"{'PASS' if total_columns_pass else 'FAIL'}"
+)
+
+print(
+    f"NaN values:             "
+    f"{total_nan:,} "
+    f"{'PASS' if total_nan_pass else 'FAIL'}"
+)
+
+print(
+    f"Infinite values:        "
+    f"{total_inf:,} "
+    f"{'PASS' if total_inf_pass else 'FAIL'}"
+)
+
+print(
+    f"Duplicate windows:      "
+    f"{total_duplicate_windows:,} "
+    f"{'PASS' if total_duplicate_pass else 'FAIL'}"
+)
+
+print(
+    f"Ordering violations:    "
+    f"{total_order_violations:,} "
+    f"{'PASS' if total_order_pass else 'FAIL'}"
+)
+
+print(
+    f"Alignment failures:     "
+    f"{total_alignment_failures:,} "
+    f"{'PASS' if total_alignment_pass else 'FAIL'}"
+)
+
+print(
+    f"Invalid future targets: "
+    f"{total_invalid_targets:,} "
+    f"{'PASS' if total_target_pass else 'FAIL'}"
+)
+
+print(
+    f"Invalid current states: "
+    f"{total_invalid_current_states:,} "
+    f"{'PASS' if total_current_state_pass else 'FAIL'}"
+)
+
+print(
+    f"Flow-count issues:      "
+    f"{total_flow_count_issues:,} "
+    f"{'PASS' if total_flow_count_pass else 'FAIL'}"
+)
+
+print(
+    f"Invalid indicators:     "
+    f"{total_invalid_indicators:,} "
+    f"{'PASS' if total_indicator_pass else 'FAIL'}"
+)
+
+print(
+    f"Leakage issues:         "
+    f"{total_leakage_issues:,} "
+    f"{'PASS' if total_leakage_pass else 'FAIL'}"
+)
+
+# ------------------------------------------------------------
+# 7. Final gate
+# ------------------------------------------------------------
+
+print("\n" + "=" * 80)
+
+if FINAL_VALIDATION_PASS:
+
+    print("FINAL PHASE 4 VALIDATION: PASS")
+    print("=" * 80)
+
+    print("""
+Phase 4 has passed the final validation gate.
+
+The dataset is ready for Hugging Face upload.
+
+No upload was performed by this validation cell.
+""")
+
+else:
+
+    print("FINAL PHASE 4 VALIDATION: FAIL")
+    print("=" * 80)
+
+    print("""
+Phase 4 has NOT passed the final validation gate.
+
+DO NOT upload the dataset.
+
+Review the failed checks above before making any modification.
+""")
+
+assert FINAL_VALIDATION_PASS, (
+    "FINAL PHASE 4 VALIDATION FAILED — DO NOT UPLOAD."
+)
+
+print("\nAll final validation assertions passed.")
+===== CODE CELL 32 =====
+# ============================================================
+# PHASE 4 — STEP 4.8.5
+# UPLOAD FINAL PHASE 4 DATASET TO HUGGING FACE
+# ============================================================
+
+import os
+import glob
+import pandas as pd
+
+from huggingface_hub import login, HfApi
+
+# ------------------------------------------------------------
+# 1. Configuration
+# ------------------------------------------------------------
+
+HF_REPO = "PrakulShetty/NetVision-AI-SIH26153"
+HF_REPO_TYPE = "dataset"
+
+LOCAL_PHASE4_DIR = "/content/phase4_final"
+HF_PHASE4_PATH = "processed/phase4/final"
+
+EXPECTED_FILES = 10
+EXPECTED_TOTAL_ROWS = 1008
+EXPECTED_COLUMNS = 198
+
+print("=" * 80)
+print("PHASE 4 — STEP 4.8.5")
+print("UPLOAD FINAL PHASE 4 DATASET TO HUGGING FACE")
+print("=" * 80)
+
+# ------------------------------------------------------------
+# 2. Verify local Phase 4 dataset
+# ------------------------------------------------------------
+
+print("\n[1/6] Verifying local Phase 4 dataset...")
+
+assert os.path.exists(LOCAL_PHASE4_DIR), (
+    f"Local Phase 4 directory not found: {LOCAL_PHASE4_DIR}"
+)
+
+local_files = sorted(
+    glob.glob(
+        os.path.join(
+            LOCAL_PHASE4_DIR,
+            "*.csv"
+        )
+    )
+)
+
+assert len(local_files) == EXPECTED_FILES, (
+    f"Expected {EXPECTED_FILES} files, found {len(local_files)}"
+)
+
+print(f"Local Phase 4 files: {len(local_files)}")
+
+# Quick structural verification before upload
+local_total_rows = 0
+
+for file_path in local_files:
+
+    df = pd.read_csv(file_path)
+
+    assert len(df.columns) == EXPECTED_COLUMNS, (
+        f"Unexpected column count in "
+        f"{os.path.basename(file_path)}"
+    )
+
+    assert df.isna().sum().sum() == 0, (
+        f"NaN values found in "
+        f"{os.path.basename(file_path)}"
+    )
+
+    local_total_rows += len(df)
+
+print(
+    f"Local temporal rows: "
+    f"{local_total_rows:,}"
+)
+
+assert local_total_rows == EXPECTED_TOTAL_ROWS
+
+print("Local dataset verification: PASS")
+
+# ------------------------------------------------------------
+# 3. Authenticate with Hugging Face
+# ------------------------------------------------------------
+
+print("\n[2/6] Verifying Hugging Face authentication...")
+
+try:
+
+    api = HfApi()
+
+    api.repo_info(
+        repo_id=HF_REPO,
+        repo_type=HF_REPO_TYPE
+    )
+
+    print("Hugging Face authentication: PASS")
+
+except Exception:
+
+    print("Hugging Face login required.")
+    login()
+
+    api = HfApi()
+
+    api.repo_info(
+        repo_id=HF_REPO,
+        repo_type=HF_REPO_TYPE
+    )
+
+    print("Hugging Face authentication: PASS")
+
+# ------------------------------------------------------------
+# 4. Upload Phase 4 directory
+# ------------------------------------------------------------
+
+print("\n[3/6] Uploading Phase 4 dataset...")
+print(f"Destination: {HF_PHASE4_PATH}")
+
+upload_result = api.upload_folder(
+    folder_path=LOCAL_PHASE4_DIR,
+    path_in_repo=HF_PHASE4_PATH,
+    repo_id=HF_REPO,
+    repo_type=HF_REPO_TYPE,
+    commit_message="Add validated Phase 4 temporal ML-ready dataset"
+)
+
+print("\nUpload completed.")
+print(f"Commit: {upload_result.commit_url}")
+
+# ------------------------------------------------------------
+# 5. Verify uploaded files
+# ------------------------------------------------------------
+
+print("\n[4/6] Verifying uploaded Phase 4 files...")
+
+repo_files = api.list_repo_files(
+    repo_id=HF_REPO,
+    repo_type=HF_REPO_TYPE
+)
+
+uploaded_files = sorted([
+    path
+    for path in repo_files
+    if path.startswith(HF_PHASE4_PATH + "/")
+    and path.lower().endswith(".csv")
+])
+
+print(
+    f"Phase 4 CSV files on Hugging Face: "
+    f"{len(uploaded_files)}"
+)
+
+assert len(uploaded_files) == EXPECTED_FILES, (
+    f"Expected {EXPECTED_FILES} uploaded files, "
+    f"found {len(uploaded_files)}"
+)
+
+for path in uploaded_files:
+    print(f"  PASS: {path}")
+
+# ------------------------------------------------------------
+# 6. Verify previous phases remain present
+# ------------------------------------------------------------
+
+print("\n[5/6] Verifying previous phases were preserved...")
+
+phase2_files = sorted([
+    path
+    for path in repo_files
+    if path.startswith("processed/phase2/")
+    and path.lower().endswith(".csv")
+])
+
+phase3_files = sorted([
+    path
+    for path in repo_files
+    if path.startswith("processed/phase3/final/")
+    and path.lower().endswith(".csv")
+])
+
+print(f"Phase 2 CSV files: {len(phase2_files)}")
+print(f"Phase 3 CSV files: {len(phase3_files)}")
+print(f"Phase 4 CSV files: {len(uploaded_files)}")
+
+assert len(phase2_files) == 10, (
+    "Phase 2 file count changed unexpectedly."
+)
+
+assert len(phase3_files) == 10, (
+    "Phase 3 file count changed unexpectedly."
+)
+
+assert len(uploaded_files) == 10
+
+print("Previous phases preserved: PASS")
+
+# ------------------------------------------------------------
+# 7. Final status
+# ------------------------------------------------------------
+
+print("\n[6/6] Final Phase 4 upload status...")
+
+print("\n" + "=" * 80)
+print("PHASE 4 UPLOAD: PASS")
+print("=" * 80)
+
+print(f"""
+Repository:
+{HF_REPO}
+
+Uploaded location:
+{HF_PHASE4_PATH}/
+
+Files uploaded:
+{len(uploaded_files)}/10
+
+Temporal rows:
+{local_total_rows:,}/1,008
+
+Columns per file:
+198
+
+Phase 2 preserved:
+YES
+
+Phase 3 preserved:
+YES
+
+Phase 4:
+UPLOADED AND VERIFIED
+""")
+
+print("=" * 80)
+print("PHASE 4 — TEMPORAL REPRESENTATION: COMPLETE")
+print("=" * 80)
