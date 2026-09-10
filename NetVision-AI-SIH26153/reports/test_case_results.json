@@ -1,0 +1,504 @@
+{
+  "meta": {
+    "executor": "scripts/execute_test_cases_doc.py",
+    "note": "Executed against the current unmodified implementation.",
+    "xgb_weight": 0.5,
+    "rf_weight": 0.5,
+    "threshold": 0.4,
+    "shap_background_shape": [
+      50,
+      138
+    ],
+    "attack_sample_row_index": 15,
+    "benign_sample_row_index": 26,
+    "sample_copy": "artifacts/phase-8/attack_sample_for_TEST_CASES.csv"
+  },
+  "cases": [
+    {
+      "id": "TC1",
+      "name": "Normal / Benign Traffic",
+      "input_kind": "synthetic_practical_traffic",
+      "input_description": {
+        "type": "practical_traffic (RuntimeFeatureTransformer)",
+        "practical_field_count": 39,
+        "source": "scripts/runtime_input_test_suite.py profiles (mirrors frontend/src/utils/presets.js)"
+      },
+      "runtime_transformed_feature_count": 138,
+      "feature_shape": [
+        1,
+        138
+      ],
+      "nan_count": 0,
+      "inf_count": 0,
+      "zero_count": 19,
+      "nonzero_count": 119,
+      "xgb_probability": 0.172121,
+      "rf_probability": 0.333333,
+      "ensemble_probability": 0.252727,
+      "threshold": 0.4,
+      "current_state": "BENIGN",
+      "world_model_forecasts": {
+        "10": {
+          "attack_probability": 0.056266,
+          "state": "BENIGN",
+          "steps": 2
+        },
+        "20": {
+          "attack_probability": 0.102077,
+          "state": "BENIGN",
+          "steps": 4
+        },
+        "30": {
+          "attack_probability": 0.139375,
+          "state": "BENIGN",
+          "steps": 6
+        },
+        "45": {
+          "attack_probability": 0.18274,
+          "state": "BENIGN",
+          "steps": 9
+        },
+        "60": {
+          "attack_probability": 0.214599,
+          "state": "BENIGN",
+          "steps": 12
+        }
+      },
+      "xai_top_features": [
+        {
+          "feature": "Flow Duration_max",
+          "shap_value": 0.034852
+        },
+        {
+          "feature": "Init Bwd Win Byts_mean",
+          "shap_value": -0.034779
+        },
+        {
+          "feature": "TotLen Fwd Pkts_max",
+          "shap_value": -0.025089
+        },
+        {
+          "feature": "Bwd Pkts/s_mean",
+          "shap_value": -0.022579
+        },
+        {
+          "feature": "Tot Fwd Pkts_sum",
+          "shap_value": -0.0159
+        }
+      ],
+      "mitre": {
+        "mapping_status": "MITRE ATT&CK mapping identified",
+        "techniques": [
+          {
+            "technique_id": "T1046",
+            "technique_name": "Network Service Discovery",
+            "tactic": "Discovery",
+            "confidence": "Medium"
+          },
+          {
+            "technique_id": "T1498",
+            "technique_name": "Network Denial of Service",
+            "tactic": "Impact",
+            "confidence": "Medium"
+          },
+          {
+            "technique_id": "T1498.001",
+            "technique_name": "Direct Network Flood",
+            "tactic": "Impact",
+            "confidence": "Low-Medium"
+          }
+        ]
+      },
+      "xai_reconstruction_error": 8.115487670767862e-09
+    },
+    {
+      "id": "TC2",
+      "name": "High-Volume / Flood-Like Attack Scenario",
+      "input_kind": "synthetic_practical_traffic",
+      "input_description": {
+        "type": "practical_traffic (RuntimeFeatureTransformer)",
+        "practical_field_count": 39,
+        "source": "scripts/runtime_input_test_suite.py profiles (mirrors frontend/src/utils/presets.js)"
+      },
+      "runtime_transformed_feature_count": 138,
+      "feature_shape": [
+        1,
+        138
+      ],
+      "nan_count": 0,
+      "inf_count": 0,
+      "zero_count": 19,
+      "nonzero_count": 119,
+      "xgb_probability": 0.598588,
+      "rf_probability": 0.51,
+      "ensemble_probability": 0.554294,
+      "threshold": 0.4,
+      "current_state": "ATTACK",
+      "world_model_forecasts": {
+        "10": {
+          "attack_probability": 0.870451,
+          "state": "ATTACK",
+          "steps": 2
+        },
+        "20": {
+          "attack_probability": 0.764974,
+          "state": "ATTACK",
+          "steps": 4
+        },
+        "30": {
+          "attack_probability": 0.679097,
+          "state": "ATTACK",
+          "steps": 6
+        },
+        "45": {
+          "attack_probability": 0.579251,
+          "state": "ATTACK",
+          "steps": 9
+        },
+        "60": {
+          "attack_probability": 0.505898,
+          "state": "ATTACK",
+          "steps": 12
+        }
+      },
+      "xai_top_features": [
+        {
+          "feature": "Fwd Seg Size Min_mean",
+          "shap_value": 0.046238
+        },
+        {
+          "feature": "Flow Duration_max",
+          "shap_value": 0.032637
+        },
+        {
+          "feature": "Tot Fwd Pkts_sum",
+          "shap_value": 0.030436
+        },
+        {
+          "feature": "TotLen Fwd Pkts_sum",
+          "shap_value": 0.025878
+        },
+        {
+          "feature": "Bwd Pkts/s_mean",
+          "shap_value": -0.019107
+        }
+      ],
+      "mitre": {
+        "mapping_status": "MITRE ATT&CK mapping identified",
+        "techniques": [
+          {
+            "technique_id": "T1046",
+            "technique_name": "Network Service Discovery",
+            "tactic": "Discovery",
+            "confidence": "Medium"
+          },
+          {
+            "technique_id": "T1498",
+            "technique_name": "Network Denial of Service",
+            "tactic": "Impact",
+            "confidence": "Medium"
+          },
+          {
+            "technique_id": "T1498.001",
+            "technique_name": "Direct Network Flood",
+            "tactic": "Impact",
+            "confidence": "Low-Medium"
+          }
+        ]
+      },
+      "xai_reconstruction_error": 7.545906122174983e-10
+    },
+    {
+      "id": "TC3",
+      "name": "Scanning-Like Traffic Scenario",
+      "input_kind": "synthetic_practical_traffic",
+      "input_description": {
+        "type": "practical_traffic (RuntimeFeatureTransformer)",
+        "practical_field_count": 39,
+        "source": "scripts/runtime_input_test_suite.py profiles (mirrors frontend/src/utils/presets.js)"
+      },
+      "runtime_transformed_feature_count": 138,
+      "feature_shape": [
+        1,
+        138
+      ],
+      "nan_count": 0,
+      "inf_count": 0,
+      "zero_count": 24,
+      "nonzero_count": 114,
+      "xgb_probability": 0.077923,
+      "rf_probability": 0.443333,
+      "ensemble_probability": 0.260628,
+      "threshold": 0.4,
+      "current_state": "BENIGN",
+      "world_model_forecasts": {
+        "10": {
+          "attack_probability": 0.056266,
+          "state": "BENIGN",
+          "steps": 2
+        },
+        "20": {
+          "attack_probability": 0.102077,
+          "state": "BENIGN",
+          "steps": 4
+        },
+        "30": {
+          "attack_probability": 0.139375,
+          "state": "BENIGN",
+          "steps": 6
+        },
+        "45": {
+          "attack_probability": 0.18274,
+          "state": "BENIGN",
+          "steps": 9
+        },
+        "60": {
+          "attack_probability": 0.214599,
+          "state": "BENIGN",
+          "steps": 12
+        }
+      },
+      "xai_top_features": [
+        {
+          "feature": "TotLen Fwd Pkts_sum",
+          "shap_value": -0.059056
+        },
+        {
+          "feature": "Fwd Seg Size Min_mean",
+          "shap_value": -0.047618
+        },
+        {
+          "feature": "Fwd IAT Max_mean",
+          "shap_value": 0.03899
+        },
+        {
+          "feature": "Init Fwd Win Byts_mean",
+          "shap_value": 0.034582
+        },
+        {
+          "feature": "Fwd IAT Tot_max",
+          "shap_value": -0.026093
+        }
+      ],
+      "mitre": {
+        "mapping_status": "MITRE ATT&CK mapping identified",
+        "techniques": [
+          {
+            "technique_id": "T1046",
+            "technique_name": "Network Service Discovery",
+            "tactic": "Discovery",
+            "confidence": "Medium"
+          },
+          {
+            "technique_id": "T1498",
+            "technique_name": "Network Denial of Service",
+            "tactic": "Impact",
+            "confidence": "Medium"
+          },
+          {
+            "technique_id": "T1498.001",
+            "technique_name": "Direct Network Flood",
+            "tactic": "Impact",
+            "confidence": "Low-Medium"
+          }
+        ]
+      },
+      "xai_reconstruction_error": 1.2476402300176659e-08
+    },
+    {
+      "id": "TC4",
+      "name": "Real CIC-IDS2018 Attack Sample",
+      "input_kind": "real_dataset_sample",
+      "input_description": {
+        "type": "real_phase4_features (direct 138-feature input, no runtime transformation)",
+        "source": "models/xai/shap_background.csv row 15 \u2014 genuine CIC-IDS2018 Phase 4 feature-engineered window",
+        "ground_truth": "ATTACK (real dataset sample)",
+        "provenance_copy": "artifacts/phase-8/attack_sample_for_TEST_CASES.csv"
+      },
+      "runtime_transformed_feature_count": 138,
+      "feature_shape": [
+        1,
+        138
+      ],
+      "nan_count": 0,
+      "inf_count": 0,
+      "zero_count": 18,
+      "nonzero_count": 120,
+      "xgb_probability": 0.809926,
+      "rf_probability": 0.66,
+      "ensemble_probability": 0.734963,
+      "threshold": 0.4,
+      "current_state": "ATTACK",
+      "world_model_forecasts": {
+        "10": {
+          "attack_probability": 0.870451,
+          "state": "ATTACK",
+          "steps": 2
+        },
+        "20": {
+          "attack_probability": 0.764974,
+          "state": "ATTACK",
+          "steps": 4
+        },
+        "30": {
+          "attack_probability": 0.679097,
+          "state": "ATTACK",
+          "steps": 6
+        },
+        "45": {
+          "attack_probability": 0.579251,
+          "state": "ATTACK",
+          "steps": 9
+        },
+        "60": {
+          "attack_probability": 0.505898,
+          "state": "ATTACK",
+          "steps": 12
+        }
+      },
+      "xai_top_features": [
+        {
+          "feature": "Init Bwd Win Byts_mean",
+          "shap_value": 0.058682
+        },
+        {
+          "feature": "Fwd IAT Max_mean",
+          "shap_value": 0.051617
+        },
+        {
+          "feature": "Fwd Seg Size Min_mean",
+          "shap_value": 0.046561
+        },
+        {
+          "feature": "TotLen Fwd Pkts_sum",
+          "shap_value": 0.03623
+        },
+        {
+          "feature": "Init Fwd Win Byts_mean",
+          "shap_value": -0.036153
+        }
+      ],
+      "mitre": {
+        "mapping_status": "MITRE ATT&CK mapping identified",
+        "techniques": [
+          {
+            "technique_id": "T1046",
+            "technique_name": "Network Service Discovery",
+            "tactic": "Discovery",
+            "confidence": "Medium"
+          },
+          {
+            "technique_id": "T1498",
+            "technique_name": "Network Denial of Service",
+            "tactic": "Impact",
+            "confidence": "Medium"
+          },
+          {
+            "technique_id": "T1498.001",
+            "technique_name": "Direct Network Flood",
+            "tactic": "Impact",
+            "confidence": "Low-Medium"
+          }
+        ]
+      },
+      "xai_reconstruction_error": 5.688571613760018e-09
+    }
+  ],
+  "reference_benign": {
+    "id": "REF-BENIGN",
+    "name": "Real CIC-IDS2018 Benign Sample (reference)",
+    "input_kind": "real_dataset_sample",
+    "input_description": {
+      "type": "real_phase4_features (direct 138-feature input)",
+      "source": "models/xai/shap_background.csv row 26",
+      "ground_truth": "BENIGN (real dataset sample)"
+    },
+    "runtime_transformed_feature_count": 138,
+    "feature_shape": [
+      1,
+      138
+    ],
+    "nan_count": 0,
+    "inf_count": 0,
+    "zero_count": 19,
+    "nonzero_count": 119,
+    "xgb_probability": 0.013329,
+    "rf_probability": 0.05,
+    "ensemble_probability": 0.031665,
+    "threshold": 0.4,
+    "current_state": "BENIGN",
+    "world_model_forecasts": {
+      "10": {
+        "attack_probability": 0.056266,
+        "state": "BENIGN",
+        "steps": 2
+      },
+      "20": {
+        "attack_probability": 0.102077,
+        "state": "BENIGN",
+        "steps": 4
+      },
+      "30": {
+        "attack_probability": 0.139375,
+        "state": "BENIGN",
+        "steps": 6
+      },
+      "45": {
+        "attack_probability": 0.18274,
+        "state": "BENIGN",
+        "steps": 9
+      },
+      "60": {
+        "attack_probability": 0.214599,
+        "state": "BENIGN",
+        "steps": 12
+      }
+    },
+    "xai_top_features": [
+      {
+        "feature": "TotLen Fwd Pkts_sum",
+        "shap_value": -0.048414
+      },
+      {
+        "feature": "Fwd Seg Size Min_mean",
+        "shap_value": -0.029954
+      },
+      {
+        "feature": "PSH Flag Cnt_sum",
+        "shap_value": -0.02438
+      },
+      {
+        "feature": "Init Fwd Win Byts_mean",
+        "shap_value": -0.021057
+      },
+      {
+        "feature": "Tot Fwd Pkts_sum",
+        "shap_value": -0.019293
+      }
+    ],
+    "mitre": {
+      "mapping_status": "MITRE ATT&CK mapping identified",
+      "techniques": [
+        {
+          "technique_id": "T1046",
+          "technique_name": "Network Service Discovery",
+          "tactic": "Discovery",
+          "confidence": "Medium"
+        },
+        {
+          "technique_id": "T1498",
+          "technique_name": "Network Denial of Service",
+          "tactic": "Impact",
+          "confidence": "Medium"
+        },
+        {
+          "technique_id": "T1498.001",
+          "technique_name": "Direct Network Flood",
+          "tactic": "Impact",
+          "confidence": "Low-Medium"
+        }
+      ]
+    },
+    "xai_reconstruction_error": 9.97392633761418e-10
+  }
+}
