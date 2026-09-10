@@ -22,11 +22,16 @@ Pipeline:
     Unified Forecast Response
 """
 
+import logging
 from pathlib import Path
 from typing import Any, Dict
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+
+# DEV-ONLY: Debug logger — writes to server console/stderr, never to API response
+_debug_log = logging.getLogger("netvision.debug")
+logging.basicConfig(level=logging.DEBUG, format="[NETVISION DEBUG] %(message)s")
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.schemas.forecast import ForecastRequest
@@ -153,6 +158,20 @@ def forecast(request: ForecastRequest) -> Dict[str, Any]:
         for k, v in req_dict.items():
             if k not in ("features", "traffic") and isinstance(v, (int, float, str)):
                 traffic_data[k] = v
+
+        # DEV-ONLY: Log received practical traffic keys and values
+        # This is development diagnostic logging only — never exposed in response
+        _debug_log.debug("REQUEST RECEIVED — practical traffic input:")
+        for key in sorted(traffic_data.keys()):
+            _debug_log.debug("  %-35s = %s", key, traffic_data[key])
+        _debug_log.debug("  total keys received: %d", len(traffic_data))
+        # Key fields the transformer needs:
+        _needed = ["forward_packets", "backward_packets", "forward_bytes", "backward_bytes",
+                   "flow_bytes_per_sec", "flow_packets_per_sec", "backward_packets_per_sec",
+                   "flow_duration", "syn_flag_cnt", "ack_flag_cnt", "flow_count"]
+        _debug_log.debug("  --- transformer key check ---")
+        for _k in _needed:
+            _debug_log.debug("  %-35s -> %s", _k, traffic_data.get(_k, 'MISSING — will default to 0.0'))
 
         # If no traffic data was explicitly supplied, fallback to empty dict
         # RuntimeFeatureTransformer applies sensible defaults for demo/test inputs
