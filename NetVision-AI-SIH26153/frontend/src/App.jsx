@@ -300,6 +300,11 @@ export default function App() {
                 </button>
               ))}
             </div>
+            {presetValues && (
+              <p className="preset-note">
+                Input preset only — prediction is calculated by the ML model.
+              </p>
+            )}
           </div>
           <div className="analysis-layout">
             <TrafficForm onSubmit={analyse} status={status} presetValues={presetValues} onPresetConsumed={() => setPresetValues(null)} />

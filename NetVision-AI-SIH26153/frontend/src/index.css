@@ -486,6 +486,15 @@ p {
   background: rgba(187, 118, 88, 0.08);
 }
 
+.preset-note {
+  margin: 0 0 0 auto;
+  font-size: 11px;
+  color: var(--faint);
+  letter-spacing: 0.02em;
+  max-width: 260px;
+  text-align: right;
+}
+
 .traffic-form {
   border-top: 1px solid var(--line);
 }
@@ -504,6 +513,26 @@ legend {
   letter-spacing: 0.12em;
   font-weight: 700;
   padding: 0 0 21px;
+}
+
+.legend-num {
+  color: var(--copper);
+  font-weight: 700;
+}
+
+.group-hint {
+  margin: -12px 0 16px;
+  font-size: 11px;
+  color: var(--faint);
+  line-height: 1.5;
+}
+
+.field-hint {
+  font-style: normal;
+  font-size: 10px;
+  color: var(--faint);
+  margin-left: 5px;
+  cursor: help;
 }
 
 .field-grid {
