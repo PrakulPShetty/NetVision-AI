@@ -334,7 +334,11 @@ code {
 
 .nav-inner {
   height: 74px;
-  padding: 0 var(--page-pad);
+  /* The bar itself runs nearly full-bleed (small professional padding) so the
+     brand hugs the left corner and the nav + status group hugs the right —
+     NOT the shared --page-pad content column, whose wide inset (up to ~295px
+     per side) floats the links toward the centre of the screen. */
+  padding: 0 clamp(20px, 2.5vw, 44px);
   display: flex;
   align-items: center;
   /* flex-start + the nav's margin-left:auto = brand pinned left, links and
