@@ -333,51 +333,55 @@ code {
 }
 
 .nav-inner {
-  height: 68px;
+  height: 74px;
   padding: 0 var(--page-pad);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* flex-start + the nav's margin-left:auto = brand pinned left, links and
+     status pinned right as ONE group (space-between would split the free
+     space into two gaps and float the links toward the centre). */
+  justify-content: flex-start;
   gap: 24px;
 }
 
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 12px;
   border: 0;
   background: none;
-  padding: 4px 0;
+  padding: 0;
   cursor: pointer;
-  transition: opacity var(--transition), transform var(--transition);
+  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
 }
 
 .brand:hover {
-  opacity: 0.9;
   transform: translateY(-1px);
 }
 
-.brand-lockup {
+/* Light plate: the original artwork is dark ink designed for light surfaces,
+   so on the dark interface it is framed — never recoloured or redrawn. */
+.brand.framed {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, #f4f2ec 0%, #e9e6dd 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 10px 20px -14px rgba(0, 0, 0, 0.95);
+}
+
+.brand.framed:hover {
+  border-color: var(--line-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65), 0 14px 26px -14px rgba(0, 0, 0, 1);
+}
+
+.brand-art {
   display: block;
-  width: auto;
   object-fit: contain;
-  /* The light treatment is faint by design; a light shadow keeps it legible. */
-  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.5));
 }
 
 .brand-fallback {
   font: 800 15px Manrope, sans-serif;
   letter-spacing: 0.08em;
-  color: var(--ink);
-}
-
-.brand-sub {
-  display: block;
-  max-width: 190px;
-  font: 600 9px/1.35 Manrope, sans-serif;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--faint);
+  color: #1c2433;
 }
 
 .desktop-nav {
@@ -1077,55 +1081,62 @@ code {
   gap: 18px;
 }
 
-.hero-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  perspective: 1400px;
-  transition: transform 120ms linear;
-}
-
-.hero-layer {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 15px 18px;
+.hero-canvas-wrap {
+  position: relative;
+  height: 420px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: linear-gradient(180deg, #141a28 0%, #0f1420 100%);
+  background:
+    radial-gradient(70% 60% at 50% 45%, rgba(127, 156, 192, 0.08), transparent 70%),
+    linear-gradient(180deg, #101624 0%, #0b0f1a 100%);
   box-shadow: var(--shadow-2);
-  /* staggered offset + scale produces layered depth without rotation gimmicks */
-  transform: translateX(calc(var(--depth) * 14px)) scale(calc(1 - var(--depth) * 0.018));
-  transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition);
+  overflow: hidden;
+  cursor: crosshair;
 }
 
-.hero-layer:hover {
-  border-color: var(--line-strong);
-  box-shadow: var(--shadow-3);
+.hero-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
-.hero-layer-index {
-  font: 500 11px 'DM Mono', monospace;
-  color: var(--copper);
-  letter-spacing: 0.06em;
+.hero-beacon-label {
+  position: absolute;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(9, 12, 20, 0.85);
+  font: 600 9.5px Manrope, sans-serif;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  pointer-events: none;
 }
 
-.hero-layer-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.hero-beacon-label.now {
+  left: 7%;
+  bottom: 22%;
+  color: var(--sage);
+  border-color: rgba(141, 171, 148, 0.35);
 }
 
-.hero-layer-copy strong {
-  font-size: 14px;
-  font-weight: 600;
+.hero-beacon-label.next {
+  right: 6%;
+  top: 22%;
+  color: #d68963;
+  border-color: rgba(187, 118, 88, 0.4);
 }
 
-.hero-layer-copy em {
-  font-style: normal;
-  font-size: 11px;
-  color: var(--faint);
-  letter-spacing: 0.04em;
+.hero-visual-fallback {
+  padding: 48px 26px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #0f1420;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.8;
+  text-align: center;
 }
 
 .hero-visual-note {
@@ -2767,16 +2778,16 @@ code {
 }
 
 @media (max-width: 1000px) {
+  /* Keep the inline links (logo left / links right) down to small tablets —
+     only tighten spacing so the row still fits narrower panes. */
   .desktop-nav {
-    display: none;
+    gap: 0;
   }
 
-  .menu-button {
-    display: inline-flex;
-  }
-
-  .mobile-nav.open {
-    display: flex;
+  .nav-link {
+    padding: 9px 6px;
+    font-size: 10px;
+    letter-spacing: 0.09em;
   }
 
   .nav-status-text {
@@ -2804,8 +2815,8 @@ code {
     padding-top: 68px;
   }
 
-  .hero-stack {
-    max-width: 620px;
+  .hero-canvas-wrap {
+    height: 380px;
   }
 
   .ct-head {
@@ -2822,9 +2833,58 @@ code {
   }
 }
 
+@media (max-width: 480px) {
+  /* Phones only: collapse the link row into the disclosure menu.
+     With the nav hidden, the tail (hamburger) must keep its own auto
+     margin to stay pinned at the right edge. */
+  .nav-tail {
+    margin-left: auto;
+  }
+
+  .desktop-nav {
+    display: none;
+  }
+
+  .nav-status {
+    display: none;
+  }
+
+  .menu-button {
+    display: inline-flex;
+  }
+
+  .mobile-nav.open {
+    display: flex;
+  }
+
+  .brand-art {
+    height: 26px !important;
+    width: auto !important;
+  }
+
+  .brand.framed {
+    padding: 4px 8px;
+  }
+}
+
 @media (max-width: 760px) {
   .site-header {
     position: sticky;
+  }
+
+  /* Status pill stays on the right alongside the links; compact it and
+     show the dot only (text is already hidden below 1000px). */
+  .nav-status {
+    padding: 4px 7px;
+  }
+
+  .nav-inner {
+    padding: 0 14px;
+    gap: 14px;
+  }
+
+  .nav-link {
+    padding: 9px 5px;
   }
 
   .footer-grid {
@@ -2917,6 +2977,14 @@ code {
   .hero-signals {
     gap: 6px;
   }
+
+  .hero-canvas-wrap {
+    height: 320px;
+  }
+
+  .brand.framed {
+    padding: 4px 10px;
+  }
 }
 
 @media (max-width: 520px) {
@@ -2965,9 +3033,5 @@ code {
 
   html {
     scroll-behavior: auto;
-  }
-
-  .hero-stack {
-    transform: none !important;
   }
 }

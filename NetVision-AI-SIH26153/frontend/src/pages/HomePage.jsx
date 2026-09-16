@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { ArrowDownRight, ArrowRight } from 'lucide-react';
 import Panel from '../components/common/Panel';
 import Chip from '../components/common/Chip';
-import HeroDiagram from '../components/home/HeroDiagram';
+import NetworkCanvas from '../components/home/NetworkCanvas';
 import ForecastWorkflow from '../components/home/ForecastWorkflow';
 import PipelineTrack from '../components/home/PipelineTrack';
 
@@ -134,7 +134,7 @@ export default function HomePage({ onGo, onSectionChange, workflowIndex, onWorkf
             <li>ATT&amp;CK correlation</li>
           </ul>
         </div>
-        <HeroDiagram />
+        <NetworkCanvas />
       </section>
 
       <section className="home-section" id="answers">

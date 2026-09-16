@@ -3,52 +3,45 @@ import { useState } from 'react';
 /**
  * NetVision AI brand lockup.
  *
- * The official artwork is dark ink on transparency, so it disappears on the
- * dark application surfaces. A light-on-dark treatment of the same artwork is
- * shipped in /public/brand and used on every dark surface — no boxed plate,
- * no recoloured guesswork at runtime.
+ * Serves the ORIGINAL project artwork — `design-reference/branding/netvision updated logo.png`
+ * copied byte-for-byte to /brand/netvision-logo.png. It is never recoloured or redrawn.
+ * The artwork is dark ink designed for light backgrounds, so on the dark interface it
+ * sits on a small light plate ("framed") that keeps it sharp, visible and high-contrast.
  */
 
-const ASSETS = {
-  lockup: '/brand/netvision-lockup-light.png',
-  mark: '/brand/netvision-mark-light.png',
-};
+const ART_SRC = '/brand/netvision-logo.png';
+const ART_ASPECT = 1983 / 793; // intrinsic aspect ratio of the original artwork
 
 export default function Brand({
-  variant = 'lockup',
-  height,
-  subline = false,
+  height = 30,
+  framed = true,
   onClick,
   className = '',
   title = 'NetVision AI — home',
 }) {
   const [failed, setFailed] = useState(false);
-  const resolvedHeight = height ?? (variant === 'mark' ? 34 : 28);
 
-  const content = (
-    <>
-      {failed ? (
-        <span className="brand-fallback">NETVISION AI</span>
-      ) : (
-        <img
-          className="brand-lockup"
-          style={{ height: `${resolvedHeight}px` }}
-          src={ASSETS[variant]}
-          alt="NetVision AI"
-          onError={() => setFailed(true)}
-        />
-      )}
-      {subline && <span className="brand-sub">Predictive network security intelligence</span>}
-    </>
+  const art = failed ? (
+    <span className="brand-fallback">NETVISION AI</span>
+  ) : (
+    <img
+      className="brand-art"
+      style={{ height: `${height}px`, width: `${Math.round(height * ART_ASPECT)}px` }}
+      src={ART_SRC}
+      alt="NetVision AI"
+      onError={() => setFailed(true)}
+    />
   );
 
+  const classes = `brand${framed ? ' framed' : ''}${className ? ` ${className}` : ''}`;
+
   if (!onClick) {
-    return <span className={`brand ${className}`}>{content}</span>;
+    return <span className={classes}>{art}</span>;
   }
 
   return (
-    <button type="button" className={`brand ${className}`} onClick={onClick} title={title} aria-label={title}>
-      {content}
+    <button type="button" className={classes} onClick={onClick} title={title} aria-label={title}>
+      {art}
     </button>
   );
 }

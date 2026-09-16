@@ -6,10 +6,14 @@ import { NAV_ITEMS } from '../../router';
 /**
  * Application navbar.
  *
- * Behaves like part of the application rather than a separate block: it sits on
- * the same base colour as the page, gains elevation only once the page scrolls,
- * and marks the active route with a copper underline plus a resting surface.
- * The brand lockup is the light-on-dark artwork, so no boxed plate is needed.
+ * Layout contract: the brand lockup is anchored to the LEFT edge of the page
+ * container and every navigation item plus the engine status are pushed to the
+ * RIGHT edge — done structurally with flexbox `margin-left: auto` on the nav
+ * group, not with arbitrary margins. The logo renders at 34px (up from 26px)
+ * on its light plate so the wordmark stays sharp and clearly readable.
+ *
+ * Below 1000px the link row collapses into a disclosure menu; the brand and
+ * the status pill remain in the bar.
  */
 
 const HEALTH_LABELS = {
@@ -56,7 +60,7 @@ export default function SiteNav({ activeId, onSelect, health = 'checking' }) {
   return (
     <header className={`site-header${elevated ? ' elevated' : ''}`}>
       <div className="nav-inner">
-        <Brand height={26} variant="lockup" onClick={() => select(NAV_ITEMS[0])} />
+        <Brand height={34} framed onClick={() => select(NAV_ITEMS[0])} />
 
         <nav className="desktop-nav" aria-label="Primary navigation">
           {NAV_ITEMS.map((item) => {
