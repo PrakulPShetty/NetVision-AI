@@ -25,7 +25,6 @@ export const TRAFFIC_PRESETS = [
     id: 'normal',
     title: 'Normal Enterprise Traffic',
     badge: 'BENIGN TRAFFIC',
-    badgeColor: 'bg-primary/20 text-primary border-primary/30',
     description: 'Balanced web / API / DB traffic over a 5-minute window — values match the median benign CIC-IDS2018 Phase 4 window.',
     data: {
       flow_count: 8570,
@@ -75,7 +74,6 @@ export const TRAFFIC_PRESETS = [
     id: 'high_volume',
     title: 'High-Volume Attack-like Traffic',
     badge: 'HIGH-VOLUME TRAFFIC',
-    badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     description: 'Large asymmetric bulk transfer with heavy backward payload and elevated RST/ACK activity — matches the median attack Phase 4 window.',
     data: {
       flow_count: 9880,
@@ -125,7 +123,6 @@ export const TRAFFIC_PRESETS = [
     id: 'syn_flood',
     title: 'SYN-Heavy Connection Flood',
     badge: 'SYN FLOOD PROFILE',
-    badgeColor: 'bg-error-container/40 text-error border-error/40',
     description: '~90,000 SYNs in 5 minutes (~300 attempts/sec, an order of magnitude above normal) toward a single port with minimal handshake completion — half-open connection flood (T1498).',
     data: {
       flow_count: 90000,
@@ -175,7 +172,6 @@ export const TRAFFIC_PRESETS = [
     id: 'scanning',
     title: 'Port Scanning / Reconnaissance',
     badge: 'SCANNING PROFILE',
-    badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     description: 'Thousands of distinct destination ports with small one-to-two packet flows and high RST replies — service discovery behavior (T1046).',
     data: {
       flow_count: 12000,
@@ -225,7 +221,6 @@ export const TRAFFIC_PRESETS = [
     id: 'mixed',
     title: 'Mixed Benign + Suspicious Traffic',
     badge: 'MIXED PROFILE',
-    badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
     description: 'Mostly ordinary traffic with a modest elevation in connection attempts, RSTs, and destination diversity — ambiguous by design.',
     data: {
       flow_count: 9200,
