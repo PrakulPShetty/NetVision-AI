@@ -396,3 +396,61 @@ def test_pcap_skips_non_ip_packets(tmp_path):
     assert result["packet_count"] == 2
     assert result["skipped_non_ip_packet_count"] == 1
     assert result["window_count"] == 1
+
+
+def test_feature_csv_with_186_columns_accepted_and_preprocessed():
+    from src.ingestion.constants import CANONICAL_MODEL_FEATURES
+
+    # 138 canonical features + 48 extra columns (e.g. from Phase 4 temporal export)
+    columns = list(CANONICAL_MODEL_FEATURES) + [f"extra_stat_{i}_mean" for i in range(48)]
+    assert len(columns) == 186
+
+    row = ["10.0"] * 186
+    csv_bytes = (",".join(columns) + "\n" + ",".join(row) + "\n").encode("utf-8")
+
+    result = preprocess_upload(io.BytesIO(csv_bytes), "phase4_186_features.csv")
+
+    assert result["source_type"] == "feature_csv"
+    assert result["window_count"] == 1
+    assert result["has_features"] is True
+    window = result["windows"][0]
+    assert len(window["features"]) == MODEL_FEATURE_COUNT
+    assert result["has_profiles"] is True
+    assert len(window["profile"]) == 40
+    # Extra columns ignored
+    assert any("48 extra columns were safely ignored" in w for w in result["warnings"])
+
+
+def test_feature_csv_arbitrary_column_count_defaults_missing():
+    from src.ingestion.constants import CANONICAL_MODEL_FEATURES
+
+    # Only 50 features present
+    columns = list(CANONICAL_MODEL_FEATURES[:50])
+    row = ["5.0"] * 50
+    csv_bytes = (",".join(columns) + "\n" + ",".join(row) + "\n").encode("utf-8")
+
+    result = preprocess_upload(io.BytesIO(csv_bytes), "partial_50_features.csv")
+
+    assert result["source_type"] == "feature_csv"
+    assert result["window_count"] == 1
+    window = result["windows"][0]
+    assert len(window["features"]) == MODEL_FEATURE_COUNT
+    # The 88 missing features default to 0.0
+    zero_count = sum(1 for v in window["features"].values() if v == 0.0)
+    assert zero_count == 88
+
+
+def test_partial_profile_csv_defaults_missing():
+    # Only 15 profile fields provided
+    columns = list(PROFILE_FIELDS[:15])
+    row = ["20.0"] * 15
+    csv_bytes = (",".join(columns) + "\n" + ",".join(row) + "\n").encode("utf-8")
+
+    result = preprocess_upload(io.BytesIO(csv_bytes), "partial_profile.csv")
+
+    assert result["source_type"] == "profile_csv"
+    assert result["window_count"] == 1
+    window = result["windows"][0]
+    assert len(window["profile"]) == 40
+    zero_count = sum(1 for v in window["profile"].values() if v == 0.0)
+    assert zero_count == 25

@@ -471,3 +471,77 @@ WINDOW_FEATURE_NORMALIZED: frozenset = frozenset(
 FEATURE_METADATA_NORMALIZED: frozenset = frozenset(
     normalize_column(name) for name in FEATURE_METADATA_COLUMNS
 )
+
+#: The exact 138 canonical model features expected by the ensemble.
+CANONICAL_MODEL_FEATURES: Tuple[str, ...] = (
+    "Tot Fwd Pkts_sum", "Tot Fwd Pkts_mean", "Tot Fwd Pkts_max",
+    "Tot Bwd Pkts_sum", "Tot Bwd Pkts_mean", "Tot Bwd Pkts_max",
+    "TotLen Fwd Pkts_sum", "TotLen Fwd Pkts_mean", "TotLen Fwd Pkts_max",
+    "TotLen Bwd Pkts_sum", "TotLen Bwd Pkts_mean", "TotLen Bwd Pkts_max",
+    "Flow Duration_mean", "Flow Duration_min", "Flow Duration_max",
+    "Flow IAT Mean_mean", "Flow IAT Mean_min", "Flow IAT Mean_max",
+    "Flow IAT Std_mean", "Flow IAT Std_min", "Flow IAT Std_max",
+    "Flow IAT Max_mean", "Flow IAT Max_min", "Flow IAT Max_max",
+    "Fwd IAT Tot_mean", "Fwd IAT Tot_min", "Fwd IAT Tot_max",
+    "Fwd IAT Mean_mean", "Fwd IAT Mean_min", "Fwd IAT Mean_max",
+    "Fwd IAT Std_mean", "Fwd IAT Std_min", "Fwd IAT Std_max",
+    "Fwd IAT Max_mean", "Fwd IAT Max_min", "Fwd IAT Max_max",
+    "Bwd IAT Tot_mean", "Bwd IAT Tot_max",
+    "Bwd IAT Mean_mean", "Bwd IAT Mean_max",
+    "Bwd IAT Std_mean", "Bwd IAT Std_max",
+    "Bwd IAT Max_mean", "Bwd IAT Max_max",
+    "Bwd IAT Min_mean", "Bwd IAT Min_max",
+    "Fwd Pkt Len Max_mean", "Fwd Pkt Len Max_max",
+    "Fwd Pkt Len Min_mean", "Fwd Pkt Len Min_max",
+    "Fwd Pkt Len Mean_mean", "Fwd Pkt Len Mean_max",
+    "Fwd Pkt Len Std_mean", "Fwd Pkt Len Std_max",
+    "Bwd Pkt Len Max_mean", "Bwd Pkt Len Max_max",
+    "Bwd Pkt Len Min_mean", "Bwd Pkt Len Min_max",
+    "Bwd Pkt Len Mean_mean", "Bwd Pkt Len Mean_max",
+    "Bwd Pkt Len Std_mean", "Bwd Pkt Len Std_max",
+    "Pkt Len Min_mean", "Pkt Len Min_max",
+    "Pkt Len Max_mean", "Pkt Len Max_max",
+    "Pkt Len Mean_mean", "Pkt Len Mean_max",
+    "Pkt Len Std_mean", "Pkt Len Std_max",
+    "Pkt Len Var_mean", "Pkt Len Var_max",
+    "Pkt Size Avg_mean", "Pkt Size Avg_max",
+    "Flow Byts/s_mean", "Flow Byts/s_max",
+    "Flow Pkts/s_mean", "Flow Pkts/s_max",
+    "Bwd Pkts/s_mean", "Bwd Pkts/s_max",
+    "Fwd PSH Flags_sum", "Fwd PSH Flags_max",
+    "Fwd URG Flags_sum", "Fwd URG Flags_max",
+    "FIN Flag Cnt_sum", "FIN Flag Cnt_max",
+    "SYN Flag Cnt_sum", "SYN Flag Cnt_max",
+    "RST Flag Cnt_sum", "RST Flag Cnt_max",
+    "PSH Flag Cnt_sum", "PSH Flag Cnt_max",
+    "ACK Flag Cnt_sum", "ACK Flag Cnt_max",
+    "URG Flag Cnt_sum", "URG Flag Cnt_max",
+    "CWE Flag Count_sum", "CWE Flag Count_max",
+    "ECE Flag Cnt_sum", "ECE Flag Cnt_max",
+    "Down/Up Ratio_mean", "Down/Up Ratio_max",
+    "Fwd Header Len_mean", "Fwd Header Len_max",
+    "Bwd Header Len_mean", "Bwd Header Len_max",
+    "Init Fwd Win Byts_mean", "Init Fwd Win Byts_min", "Init Fwd Win Byts_max",
+    "Init Bwd Win Byts_mean", "Init Bwd Win Byts_min", "Init Bwd Win Byts_max",
+    "Fwd Seg Size Min_mean", "Fwd Seg Size Min_max",
+    "Active Mean_mean", "Active Mean_max",
+    "Active Std_mean", "Active Std_max",
+    "Active Max_mean", "Active Max_max",
+    "Active Min_mean", "Active Min_max",
+    "Idle Mean_mean", "Idle Mean_min", "Idle Mean_max",
+    "Idle Std_mean", "Idle Std_min", "Idle Std_max",
+    "Idle Max_mean", "Idle Max_min", "Idle Max_max",
+    "Idle Min_mean", "Idle Min_min", "Idle Min_max",
+    "flow_count",
+    "unique_dst_ports",
+    "unique_protocols",
+    "total_flow_count",
+)
+
+MODEL_FEATURE_NORMALIZED_LOOKUP: Dict[str, str] = {
+    normalize_column(feature): feature for feature in CANONICAL_MODEL_FEATURES
+}
+
+def resolve_model_feature(name: object) -> str:
+    """Return the canonical model feature name for a header, or ``""``."""
+    return MODEL_FEATURE_NORMALIZED_LOOKUP.get(normalize_column(name), "")
