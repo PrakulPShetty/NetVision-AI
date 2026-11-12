@@ -1,0 +1,33 @@
+{
+  "model_name": "NetVision-AI Final Ensemble",
+  "model_version": "v1",
+  "ensemble": {
+    "type": "soft_voting",
+    "models": [
+      "xgboost",
+      "random_forest_smote"
+    ],
+    "weights": [
+      0.5,
+      0.5
+    ]
+  },
+  "threshold": 0.4,
+  "temporal": {
+    "window_minutes": 5,
+    "forecast_horizon_minutes": 10
+  },
+  "features": {
+    "count": 138,
+    "schema_file": "feature_names.json"
+  },
+  "artifacts": {
+    "xgboost": "xgb_model.json",
+    "random_forest_smote": "rf_smote_model.pkl"
+  },
+  "target": "future_attack_state",
+  "state_encoding": {
+    "0": "BENIGN",
+    "1": "ATTACK"
+  }
+}

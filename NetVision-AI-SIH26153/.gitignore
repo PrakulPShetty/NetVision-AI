@@ -40,8 +40,7 @@ data/processed/*
 
 # ---------- Model Artifacts ----------
 # Trained models can become large
-models/trained/*
-models/preprocessing/*
+
 
 # Keep documentation
 !models/README.md
