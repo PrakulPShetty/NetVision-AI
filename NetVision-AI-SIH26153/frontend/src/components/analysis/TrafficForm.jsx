@@ -10,7 +10,7 @@ import {
 /**
  * NetVision AI — 5-minute traffic profile form
  *
- * The 15-field practical input surface (expanded by the backend runtime
+ * The 40-field practical input surface (expanded by the backend runtime
  * transformer into the frozen 138-feature model representation).
  *
  * Numeric input behaviour is deliberate:

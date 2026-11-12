@@ -35,6 +35,7 @@ logging.basicConfig(level=logging.DEBUG, format="[NETVISION DEBUG] %(message)s")
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.app.schemas.forecast import ForecastRequest
+from backend.app.routes.ingestion import create_ingestion_router
 from src.forecasting.attack_forecast import AttackForecastPipeline
 
 
@@ -107,6 +108,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# File ingestion: raw CICFlowMeter CSV, PCAP/PCAPNG, profile / feature CSV.
+app.include_router(create_ingestion_router(pipeline))
+
 
 # ============================================================
 # ROOT ENDPOINT
@@ -144,8 +148,18 @@ def health() -> Dict[str, Any]:
 @app.post("/forecast")
 def forecast(request: ForecastRequest) -> Dict[str, Any]:
     try:
-        # 1. If 138 model-ready features dictionary is provided directly
-        if request.features is not None and len(request.features) == 138:
+        # 1. If a model-ready feature dictionary is provided directly, it
+        #    must contain exactly the 138 frozen model features. A silently
+        #    ignored wrong-length payload would hide client mistakes.
+        if request.features is not None:
+            if len(request.features) != 138:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "The 'features' dictionary must contain exactly 138 "
+                        f"model features; received {len(request.features)}."
+                    ),
+                )
             return pipeline.forecast(request.features)
 
         # 2. Extract practical traffic input dictionary
@@ -177,6 +191,11 @@ def forecast(request: ForecastRequest) -> Dict[str, Any]:
         # RuntimeFeatureTransformer applies sensible defaults for demo/test inputs
         return pipeline.forecast_from_traffic(traffic_data)
 
+    except HTTPException:
+        # Validation errors raised above (e.g. a wrong-length feature
+        # dictionary) must keep their status code instead of falling through
+        # to the generic 500 handler below.
+        raise
     except ValueError as exc:
         raise HTTPException(
             status_code=422,

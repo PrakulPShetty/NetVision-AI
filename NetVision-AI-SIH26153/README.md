@@ -15,14 +15,15 @@
 NetVision AI shifts the security paradigm from reactive detection to **proactive temporal forecasting**, asking:  
 > *"Based on current network flow dynamics and historical state transitions, is an attack likely to escalate in the next 10 to 60 minutes?"*
 
-The system processes 15 operational network flow attributes, expands them into 138 engineered features using a runtime feature transformer, evaluates current threat status via an **XGBoost + Random Forest-SMOTE Ensemble**, projects future threat progression using a **Discrete-Time Markov World Model**, explains key risk drivers via **SHAP (SHapley Additive exPlanations)**, and maps predicted attack patterns to actionable **MITRE ATT&CK** tactics and techniques.
+The system ingests raw CICFlowMeter CSV exports, PCAP/PCAPNG captures or aggregated traffic-profile CSVs, aggregates them into 5-minute observation windows, expands the 40-field practical profile into 138 engineered features using a runtime feature transformer, evaluates current threat status via an **XGBoost + Random Forest-SMOTE Ensemble**, projects future threat progression using a **Discrete-Time Markov World Model**, explains key risk drivers via **SHAP (SHapley Additive exPlanations)**, and maps predicted attack patterns to actionable **MITRE ATT&CK** tactics and techniques.
 
 ---
 
 ## 2. Key Capabilities
 
-- **15-Field Practical Input Surface**: Operational network flow parameters (packets, bytes, flow rates, flag counts, distinct ports/protocols) mapped live to model features.
-- **Runtime Feature Engineering**: Automated 138-feature expansion calculating packet/byte ratios, flow rates, flag densities, and statistical moments without raw PCAP overhead.
+- **40-Field Practical Input Surface**: A single 5-minute traffic window described by counts, volumes, durations, packet-size statistics, rates, timing, TCP flags, and activity/idle behaviour.
+- **Capture File Ingestion**: Upload raw CICFlowMeter CSVs, PCAP/PCAPNG captures, aggregated 40-field profile CSVs, or 138-feature Phase 4 CSVs. Flows are aggregated into 5-minute windows with the training pipeline's Phase 4 semantics.
+- **Runtime Feature Engineering**: Automated 138-feature expansion from the 40-field profile, matching the frozen model schema without re-engineering the trained models.
 - **XGBoost + Random Forest-SMOTE Ensemble**: Calibrated ensemble classifier operating at a optimal `0.40` decision threshold for maximum recall on minority attack classes.
 - **Discrete-Time Markov World Model**: Multi-horizon predictive state modeling across **10m, 20m, 30m, 45m, and 60m** timeframes across 5 discrete threat states (`BENIGN`, `RECONNAISSANCE`, `EXPLOITATION`, `LATERAL_MOVEMENT`, `DENIAL_OF_SERVICE`).
 - **Explainable AI (SHAP)**: Real-time calculation of positive and negative feature attribution scores to explain model predictions to SOC analysts.
@@ -36,19 +37,21 @@ The system processes 15 operational network flow attributes, expands them into 1
 ```
                     ┌─────────────────────────────────────────┐
                     │          React 18 Web Dashboard         │
-                    │        (Vite + Custom CSS + Recharts)   │
+                    │  Upload panel · Profile form · Results  │
                     └────────────────────┬────────────────────┘
-                                         │ HTTP POST /forecast
+                                         │ HTTP: /preprocess/file
+                                         │       /forecast
                                          ▼
                     ┌─────────────────────────────────────────┐
-                    │             FastAPI Backend             │
+                    │   FastAPI Backend + Capture Ingestion   │
+                    │ CSV / PCAP / PCAPNG → 5-minute windows  │
                     │         (Uvicorn + Pydantic v2)         │
                     └────────────────────┬────────────────────┘
-                                         │ 15 Flow Inputs
+                                         │ 40 Profile Fields
                                          ▼
                     ┌─────────────────────────────────────────┐
                     │       Runtime Feature Transformer       │
-                    │   (Expands 15 inputs to 138 features)   │
+                    │   (Expands 40 inputs to 138 features)   │
                     └────────────────────┬────────────────────┘
                                          │ 138 Features
                                          ▼
@@ -86,6 +89,7 @@ The system processes 15 operational network flow attributes, expands them into 1
 | :--- | :--- |
 | **Frontend** | React 18, Vite, Recharts, Lucide React, Custom Glassmorphism CSS |
 | **Backend Framework** | Python 3.13, FastAPI, Uvicorn, Pydantic v2, Pytest |
+| **File Ingestion** | Pandas, Scapy (PCAP/PCAPNG), python-multipart |
 | **Machine Learning** | Scikit-learn, XGBoost, Imbalanced-learn (SMOTE), Joblib, NumPy, Pandas |
 | **Explainability (XAI)** | SHAP (SHapley Additive exPlanations) |
 | **Security Framework** | MITRE ATT&CK v14 Knowledge Base Mapping |
@@ -99,24 +103,21 @@ The system processes 15 operational network flow attributes, expands them into 1
 The models were trained and validated on the benchmark **CIC-IDS2018** network intrusion dataset, capturing diverse traffic conditions across benign state operations, Reconnaissance (Port Scans), Exploitation, and Denial of Service (DoS/DDoS) scenarios.
 
 ### Feature Engineering (`RuntimeFeatureTransformer`)
-The input interface collects 15 core telemetry attributes:
-1. `flow_count`: Active concurrent flows
-2. `unique_dst_ports`: Distinct target ports contacted
-3. `unique_protocols`: Distinct IP protocols observed
-4. `forward_packets`: Total packets sent forward
-5. `forward_bytes`: Total payload bytes sent forward
-6. `backward_packets`: Total packets received backward
-7. `backward_bytes`: Total payload bytes received backward
-8. `flow_duration`: Flow duration (microseconds)
-9. `flow_bytes_per_sec`: Data throughput rate
-10. `flow_packets_per_sec`: Packet transmission rate
-11. `backward_packets_per_sec`: Return packet rate
-12. `syn_flag_cnt`: SYN flag frequency
-13. `ack_flag_cnt`: ACK flag frequency
-14. `rst_flag_cnt`: RST flag frequency
-15. `fin_flag_cnt`: FIN flag frequency
+The input interface describes **one 5-minute traffic observation window** using 40 practical fields:
 
-The runtime transformer dynamically computes 123 derived statistics (mean packet sizes, flag ratios, flow ratios, header density metrics) to construct the complete **138-feature vector** expected by the pre-trained ML models.
+- **Window**: `flow_count`, `unique_dst_ports`, `unique_protocols`
+- **Volume**: `forward_packets`, `backward_packets`, `forward_bytes`, `backward_bytes`
+- **Largest flow**: `max_fwd_packets_per_flow`, `max_bwd_packets_per_flow`, `max_fwd_bytes_per_flow`, `max_bwd_bytes_per_flow`
+- **Flow duration (s)**: `avg_flow_duration_sec`, `max_flow_duration_sec`, `min_flow_duration_sec`
+- **Packet profile (bytes)**: `avg_fwd_packet_size`, `avg_bwd_packet_size`, `max_fwd_packet_size`, `max_bwd_packet_size`, `min_fwd_packet_size`, `min_bwd_packet_size`, `pkt_len_std`
+- **Rates**: `avg_flow_bytes_per_sec`, `avg_flow_packets_per_sec`, `avg_bwd_packets_per_sec`
+- **Timing (s)**: `avg_iat_sec`, `iat_std_sec`, `max_iat_sec`, `avg_bwd_iat_sec`
+- **TCP flags**: `syn_flag_cnt`, `ack_flag_cnt`, `rst_flag_cnt`, `fin_flag_cnt`, `psh_flag_cnt`, `urg_flag_cnt`
+- **TCP profile**: `init_fwd_win_byts`, `init_bwd_win_byts`, `fwd_seg_size_min`
+- **Activity / idle (s)**: `active_mean_sec`, `idle_mean_sec`
+- **Balance**: `down_up_ratio`
+
+The same profile can be produced automatically by uploading a raw CICFlowMeter CSV, a PCAP/PCAPNG capture, or an aggregated profile CSV. The runtime transformer expands the 40 fields into the complete **138-feature vector** expected by the pre-trained ML models. See [`docs/architecture/file_ingestion.md`](docs/architecture/file_ingestion.md) and [`docs/api/file_ingestion_api.md`](docs/api/file_ingestion_api.md).
 
 ### Model Architecture
 - **XGBoost Classifier**: Optimized gradient boosting tree model trained on log-loss objective.
@@ -268,7 +269,7 @@ The React web dashboard will launch at `http://localhost:3000`.
 
 ### 2. Traffic Forecast Inference
 - **`POST /forecast`**
-- **Request Body**:
+- **Request Body** (all 40 profile fields shown; omitted fields default to `0.0`):
 ```json
 {
   "traffic": {
@@ -276,17 +277,42 @@ The React web dashboard will launch at `http://localhost:3000`.
     "unique_dst_ports": 45,
     "unique_protocols": 2,
     "forward_packets": 1200,
-    "forward_bytes": 85000,
     "backward_packets": 1100,
+    "forward_bytes": 85000,
     "backward_bytes": 78000,
-    "flow_duration": 5000000,
-    "flow_bytes_per_sec": 32600.0,
-    "flow_packets_per_sec": 460.0,
-    "backward_packets_per_sec": 220.0,
+    "max_fwd_packets_per_flow": 120,
+    "max_bwd_packets_per_flow": 110,
+    "max_fwd_bytes_per_flow": 8500,
+    "max_bwd_bytes_per_flow": 7800,
+    "avg_flow_duration_sec": 5.0,
+    "max_flow_duration_sec": 30.0,
+    "min_flow_duration_sec": 0.01,
+    "avg_fwd_packet_size": 70.8,
+    "avg_bwd_packet_size": 70.9,
+    "max_fwd_packet_size": 1460,
+    "max_bwd_packet_size": 1460,
+    "min_fwd_packet_size": 54,
+    "min_bwd_packet_size": 54,
+    "pkt_len_std": 320.5,
+    "avg_flow_bytes_per_sec": 32600.0,
+    "avg_flow_packets_per_sec": 460.0,
+    "avg_bwd_packets_per_sec": 220.0,
+    "avg_iat_sec": 0.05,
+    "iat_std_sec": 0.12,
+    "max_iat_sec": 2.4,
+    "avg_bwd_iat_sec": 0.08,
     "syn_flag_cnt": 80,
     "ack_flag_cnt": 150,
     "rst_flag_cnt": 5,
-    "fin_flag_cnt": 10
+    "fin_flag_cnt": 10,
+    "psh_flag_cnt": 90,
+    "urg_flag_cnt": 0,
+    "init_fwd_win_byts": 8700,
+    "init_bwd_win_byts": 24120,
+    "fwd_seg_size_min": 17,
+    "active_mean_sec": 0.13,
+    "idle_mean_sec": 4.8,
+    "down_up_ratio": 0.92
   }
 }
 ```
@@ -296,21 +322,34 @@ The React web dashboard will launch at `http://localhost:3000`.
   - `xai_explanation`: Object containing top positive and negative SHAP feature contributions.
   - `mitre_correlation`: Object containing mapped tactic, technique ID, technique name, and mitigation guidance.
 
+### 3. Capture Preprocessing
+- **`POST /preprocess/file`** (multipart)
+- Upload a CICFlowMeter CSV, PCAP/PCAPNG capture, 40-field profile CSV, or
+  138-feature Phase 4 CSV. Returns 5-minute windows with either a `profile`
+  (40 fields) or `features` (138 fields) payload. No inference is performed.
+
+### 4. Forecast From File
+- **`POST /forecast/file`** (multipart)
+- Form fields: `file` and optional `window_index` (default `0`).
+- Runs the existing pipeline on the selected window and returns the unified
+  forecast under `forecast`.
+- Full request/response documentation: [`docs/api/file_ingestion_api.md`](docs/api/file_ingestion_api.md).
+
 ---
 
 ## 12. Testing & Verification
 
 ### Automated Backend Tests
-Run the complete Pytest suite to verify feature transformation, ML model loading, Markov state transitions, and API routes:
+Run the complete Pytest suite to verify feature transformation, ML model loading, Markov state transitions, ingestion, and API routes:
 
 ```bash
 .venv313\Scripts\python.exe -m pytest
 ```
 
-**Expected Result**: All 5 test suites pass (`5 passed`).
+The ingestion suites (`tests/test_file_ingestion.py`, `tests/test_ingestion_api.py`) run without the trained artifacts; model-path tests require `models/trained/*` and `models/forecasting/*` to be present.
 
 ### Frontend Production Build
-To verify component syntax and TypeScript/JSX bundle integrity:
+To verify component syntax and JSX bundle integrity:
 
 ```bash
 cd frontend
@@ -321,7 +360,7 @@ cmd /c npm run build
 
 ## 13. Limitations & Future Scope
 
-1. **Live PCAP Ingestion**: Future releases will incorporate live WinPcap / LibPcap streaming wrappers to auto-populate the 15 input fields directly from network interfaces in real time.
+1. **Live Interface Capture**: File-based CSV/PCAP/PCAPNG ingestion is implemented; future releases will add live WinPcap / LibPcap streaming wrappers to auto-populate the 40-field profile directly from network interfaces.
 2. **Online Markov Model Updating**: Transition probability matrices can be updated online using streaming Bayesian parameter estimation as continuous network traffic logs arrive.
 3. **Multi-Node Federated Intelligence**: Scaling forecasting capabilities across distributed enterprise subnets via federated learning architectures.
 
@@ -337,7 +376,7 @@ cmd /c npm run build
 ---
 
 *Developed for Smart India Hackathon 2026 — Problem Statement SIH26153.*
-��
+��
 Evaluation
     ↓
 Comparison

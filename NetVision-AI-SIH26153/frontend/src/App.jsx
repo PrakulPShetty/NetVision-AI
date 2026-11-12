@@ -7,7 +7,11 @@ import ForecastPage from './pages/ForecastPage';
 import ExplainPage from './pages/ExplainPage';
 import AttackPage from './pages/AttackPage';
 import { ROUTES, navigate, useRoute } from './router';
-import { getHealthStatus, submitTrafficForecast } from './services/api';
+import {
+  getHealthStatus,
+  submitFeatureForecast,
+  submitTrafficForecast,
+} from './services/api';
 import { normaliseForecast } from './services/forecast';
 
 /**
@@ -34,6 +38,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [engine, setEngine] = useState('checking');
+  const [inputMode, setInputMode] = useState(null); // profile | features
 
   // ---------------------------------------------------------------
   // Engine reachability — real state, never faked
@@ -57,11 +62,12 @@ export default function App() {
     navigate(target, options);
   }, []);
 
-  const analyse = useCallback(async (traffic) => {
+  const runAnalysis = useCallback(async (mode, submit) => {
     setStatus('analyzing');
     setError(null);
+    setInputMode(mode);
 
-    const response = await submitTrafficForecast(traffic);
+    const response = await submit();
 
     if (response.success && response.data) {
       const normalised = normaliseForecast(response.data);
@@ -81,6 +87,18 @@ export default function App() {
       setEngine('offline');
     }
   }, []);
+
+  const analyse = useCallback(
+    (traffic) => runAnalysis('profile', () => submitTrafficForecast(traffic)),
+    [runAnalysis]
+  );
+
+  // A 138-feature model row skips the runtime transformer and is scored
+  // directly by the frozen ensemble through POST /forecast.
+  const analyseFeatures = useCallback(
+    (features) => runAnalysis('features', () => submitFeatureForecast(features)),
+    [runAnalysis]
+  );
 
   const activeNavId = useMemo(() => {
     if (path === ROUTES.home) return homeSection === 'about' ? 'about' : 'home';
@@ -104,7 +122,15 @@ export default function App() {
 
       <main className="app-main">
         {path === ROUTES.analyze && (
-          <AnalyzePage status={status} error={error} result={result} onAnalyze={analyse} onGo={go} />
+          <AnalyzePage
+            status={status}
+            error={error}
+            result={result}
+            inputMode={inputMode}
+            onAnalyze={analyse}
+            onAnalyzeFeatures={analyseFeatures}
+            onGo={go}
+          />
         )}
         {path === ROUTES.forecast && <ForecastPage status={status} result={result} onGo={go} />}
         {path === ROUTES.explain && <ExplainPage status={status} result={result} onGo={go} />}

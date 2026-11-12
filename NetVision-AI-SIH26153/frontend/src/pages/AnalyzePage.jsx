@@ -5,21 +5,31 @@ import Panel from '../components/common/Panel';
 import Callout from '../components/common/Callout';
 import MetricCard from '../components/common/MetricCard';
 import PresetScenarios from '../components/analysis/PresetScenarios';
+import FileUploadPanel from '../components/analysis/FileUploadPanel';
 import TrafficForm from '../components/analysis/TrafficForm';
 import ProfileSummary from '../components/analysis/ProfileSummary';
 import AnalysisStages from '../components/analysis/AnalysisStages';
+import { profileToFormValues } from '../services/upload';
 import { TRAFFIC_PRESETS } from '../utils/presets';
 import { deriveProfile } from '../utils/trafficFields';
 
 /**
  * Analyze — the input surface.
  *
- * Workflow: choose a demonstration scenario or enter values manually, review
- * the derived summary of that window, then run inference. The page only ever
- * displays numbers produced by the backend pipeline; before a response exists
- * it stays in an explicit idle state.
+ * Workflow: upload a capture, choose a demonstration scenario, or enter values
+ * manually; review the derived summary of that window, then run inference. The
+ * page only ever displays numbers produced by the backend pipeline; before a
+ * response exists it stays in an explicit idle state.
  */
-export default function AnalyzePage({ status, error, result, onAnalyze, onGo }) {
+export default function AnalyzePage({
+  status,
+  error,
+  result,
+  inputMode,
+  onAnalyze,
+  onAnalyzeFeatures,
+  onGo,
+}) {
   const [presetValues, setPresetValues] = useState(null);
   const [activePreset, setActivePreset] = useState(null);
   const [values, setValues] = useState(null);
@@ -31,6 +41,13 @@ export default function AnalyzePage({ status, error, result, onAnalyze, onGo }) 
     setActivePreset(preset.id);
     setPresetValues(preset.data);
   };
+
+  // Uploaded windows reuse the form's preset mechanism so the analyst can
+  // review every field before submitting.
+  const loadProfileIntoForm = useCallback((uploadedProfile) => {
+    setActivePreset(null);
+    setPresetValues(profileToFormValues(uploadedProfile));
+  }, []);
 
   const clearProfile = () => {
     setActivePreset(null);
@@ -47,7 +64,7 @@ export default function AnalyzePage({ status, error, result, onAnalyze, onGo }) 
       text: 'Submit the 5-minute observation window to run the forecasting pipeline. Nothing is predicted until you do.',
     },
     analyzing: {
-      label: 'Analyzing profile',
+      label: 'Analyzing input',
       title: 'Pipeline running',
       text: 'Scoring the ensemble, propagating the Markov world model, computing SHAP attributions and evaluating ATT&CK evidence.',
     },
@@ -75,10 +92,18 @@ export default function AnalyzePage({ status, error, result, onAnalyze, onGo }) 
               <Timer size={14} /> 1 observation window · 5 minutes
             </p>
             <p>
-              <ShieldAlert size={14} /> 15 practical inputs → 138 model features
+              <ShieldAlert size={14} /> 40 practical inputs → 138 model features
             </p>
           </div>
         }
+      />
+
+      <FileUploadPanel
+        status={status}
+        analyzingMode={inputMode}
+        onUseProfile={loadProfileIntoForm}
+        onAnalyzeProfile={onAnalyze}
+        onAnalyzeFeatures={onAnalyzeFeatures}
       />
 
       <Panel

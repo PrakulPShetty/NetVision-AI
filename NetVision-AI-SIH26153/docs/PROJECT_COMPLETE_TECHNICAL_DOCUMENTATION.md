@@ -8,23 +8,33 @@ Repository evidence reviewed for this document:
 - `README.md`
 - `backend/app/main.py`
 - `backend/app/schemas/forecast.py`
+- `backend/app/routes/ingestion.py`
 - `src/forecasting/attack_forecast.py`
 - `src/features/runtime_transformer.py`
+- `src/ingestion/`
 - `src/transition/state_transition.py`
 - `src/mitre/attack_mapping.py`
 - `src/xai/shap_explainer.py`
 - `frontend/src/App.jsx`
+- `frontend/src/components/analysis/FileUploadPanel.jsx`
+- `frontend/src/services/upload.js`
+- `frontend/src/pages/AnalyzePage.jsx`
 - `frontend/src/pages/ForecastPage.jsx`
 - `frontend/src/pages/ExplainPage.jsx`
 - `frontend/src/pages/AttackPage.jsx`
 - `tests/test_backend.py`
+- `tests/test_file_ingestion.py`
+- `tests/test_ingestion_api.py`
 - `models/trained/ensemble_config.json`
 - `models/forecasting/state_transition_model.json`
 - `models/trained/feature_names.json`
 
 Important rule applied in this analysis:
-- No existing file was edited, overwritten, renamed, moved, or deleted.
-- This file is the only newly created output for the documentation requirement.
+- The original version of this document was a read-only assessment.
+- It now also records the file-ingestion implementation documented in
+  `docs/architecture/file_ingestion.md` and `docs/api/file_ingestion_api.md`.
+- The trained models, ensemble, runtime transformer, XAI, and MITRE mapping
+  remain unmodified.
 
 ---
 
@@ -53,6 +63,8 @@ This is a forecasting and explainability pipeline, not a simple intrusion detect
 - creates a `FastAPI` application named `NetVision AI`
 - defines `/` and `/health` endpoints
 - exposes a POST `/forecast` endpoint
+- mounts `POST /preprocess/file` and `POST /forecast/file` through
+  `create_ingestion_router(pipeline)`
 - validates a `ForecastRequest`
 - loads a SHAP background dataset from `models/xai/shap_background.csv`
 - instantiates `AttackForecastPipeline`
@@ -214,6 +226,45 @@ The frontend pages are implemented as:
 
 These pages are consistent with the backend response structure and show a practical dashboard-oriented interface.
 
+The Analyze page also mounts `frontend/src/components/analysis/FileUploadPanel.jsx`,
+which uploads a capture to `POST /preprocess/file`, previews the extracted
+5-minute windows, and either loads a window into the existing 40-field form or
+submits it through the normal forecast path. The same global analysis state
+drives the Forecast, Explain, and ATT&CK pages.
+
+### 3.11 File ingestion layer
+
+`src/ingestion/` converts operational files into the existing input contract:
+
+```
+raw CICFlowMeter CSV / PCAP / PCAPNG
+        ↓
+5-minute windows (Phase 4 aggregation key: Timestamp.dt.floor("5min"))
+        ↓
+40-field practical profile  ──►  RuntimeFeatureTransformer  ──►  138 features
+        or
+138-feature Phase 4 row     ─────────────────────────────────►  138 features
+        ↓
+existing ensemble → world model → SHAP → MITRE
+```
+
+Supported inputs:
+
+1. **Raw CICFlowMeter flow CSV** — one row per flow, grouped into 5-minute
+   windows with the same sum/mean/min/max semantics used by Phase 4.
+2. **PCAP / PCAPNG** — Scapy reconstructs approximate bidirectional flows
+   (120 s idle timeout, 5 s activity threshold, no TCP reassembly, IP length
+   capped at 1460 B), then reuses the CSV aggregator.
+3. **Aggregated 40-field profile CSV** — one row per observation window.
+4. **138-feature Phase 4 CSV** — validated and passed directly to
+   `pipeline.forecast` without the transformer.
+
+The ingestion layer never modifies models or performs a second feature
+engineering pass. Labels found in source files are displayed as metadata and
+are excluded from model input. Full details are in
+`docs/architecture/file_ingestion.md`; the HTTP contract is in
+`docs/api/file_ingestion_api.md`.
+
 ---
 
 ## 4. Actual data contract and response structure
@@ -224,6 +275,16 @@ The backend returns a unified dictionary with sections like:
 - `xai`
 - `mitre_attack`
 - plus an optional `input` block when traffic is transformed
+
+The ingestion endpoints add a thin envelope:
+
+- `POST /preprocess/file` returns `source_type`, file metadata, `window_count`,
+  `warnings`, and a `windows` array. Each window contains `window_start`,
+  `window_end`, `flow_count`, label metadata, and exactly one of `profile`
+  (40 fields) or `features` (138 fields).
+- `POST /forecast/file` returns the selected window metadata plus `mode`
+  (`profile` or `features`) and the unchanged unified forecast object under
+  `forecast`.
 
 The tests validate this contract.
 
@@ -276,16 +337,24 @@ The XAI layer is built around the current ensemble probability. It shows the fac
 ## 6. What is implemented vs what is documented vs unknown
 
 ### Implemented and verified
-- FastAPI backend with `/health` and `/forecast`
+- FastAPI backend with `/health`, `/forecast`, `/preprocess/file`, and
+  `/forecast/file`
 - Direct feature and practical-traffic input support
+- Raw CICFlowMeter CSV, PCAP/PCAPNG, 40-field profile CSV, and 138-feature CSV
+  ingestion
+- Phase 4-compatible 5-minute window aggregation with documented PCAP
+  approximations
+- Upload and row/packet/window limits with typed HTTP errors
 - exact 138-feature schema validation
 - ensemble probability blending using XGBoost and Random Forest
 - threshold-based current state decision
 - Markov 2-state temporal forecast with 5-minute steps and 10/20/30/45/60 minute horizons
 - SHAP explanation pipeline using background data
 - MITRE ATT&CK behavioral mapping with minimum evidence rules
-- React UI for analyze/forecast/explain/attack views
-- backend test coverage validating the key path
+- React UI for analyze/forecast/explain/attack views, including file upload
+  preview and window selection
+- backend test coverage validating the key path plus dedicated ingestion and
+  ingestion-route tests
 
 ### Documented but not fully aligned with current code
 - README claims five threat states and a five-state Markov world model
@@ -306,14 +375,22 @@ These files are the best entry points for ongoing work:
 - `README.md` — project overview and intended architecture
 - `backend/app/main.py` — API runtime entry and bootstrap
 - `backend/app/schemas/forecast.py` — request contracts and validation rules
+- `backend/app/routes/ingestion.py` — multipart file-ingestion routes
 - `src/forecasting/attack_forecast.py` — main orchestration logic
 - `src/features/runtime_transformer.py` — the runtime feature mapping logic
+- `src/ingestion/` — CSV / PCAP preprocessing and Phase 4 aggregation
 - `src/transition/state_transition.py` — world model implementation
 - `src/xai/shap_explainer.py` — explanation engine
 - `src/mitre/attack_mapping.py` — ATT&CK correlation logic
+- `frontend/src/components/analysis/FileUploadPanel.jsx` — upload and window preview
+- `frontend/src/services/upload.js` — multipart preprocessing client
+- `docs/architecture/file_ingestion.md` — ingestion design and limitations
+- `docs/api/file_ingestion_api.md` — endpoint contract
 - `models/trained/ensemble_config.json` — threshold and weights
 - `models/forecasting/state_transition_model.json` — transition matrix definition
 - `tests/test_backend.py` — direct validation of current contract
+- `tests/test_file_ingestion.py` — ingestion-layer validation
+- `tests/test_ingestion_api.py` — route validation with a stub pipeline
 
 ---
 
@@ -324,12 +401,15 @@ These files are the best entry points for ongoing work:
 3. Validate whether the fitted model artifact paths and SHAP background were generated from the same feature schema consistently across training and runtime.
 4. Treat the MITRE mapping layer as a behavioral correlation aid rather than a ground-truth detection system.
 5. If production deployment is planned, verify that `RuntimeFeatureTransformer` receives the full practical telemetry schema expected by the field validations and that real-world traffic values match the assumptions built into the derivation formulas.
+6. Validate PCAP-derived windows against a CICFlowMeter export of the same capture before relying on small differences; flow reconstruction is intentionally approximate and documented in `docs/architecture/file_ingestion.md`.
 
 ---
 
 ## 9. Final assessment
 
 The repository is a working, coherent forecasting system with a clear end-to-end implementation path:
+- file ingestion (CICFlowMeter CSV, PCAP/PCAPNG, profile CSV, feature CSV)
+- 5-minute window aggregation
 - practical traffic input
 - runtime feature construction
 - 138-feature validation

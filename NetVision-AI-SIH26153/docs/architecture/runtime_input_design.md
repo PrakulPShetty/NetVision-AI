@@ -11,7 +11,7 @@ are **not** modified.
 ## 1. Current architecture
 
 ```
-Practical Traffic Form (17 fields)
+Practical Traffic Form (40 fields)
         ↓  POST /forecast  {traffic: {...}}
 Input Validation (ForecastRequest schema)
         ↓
@@ -23,6 +23,11 @@ XGBoost + RandomForest-SMOTE (50:50 soft vote, 0.40 threshold)
         ↓
 Current State → Markov World Model → XAI/SHAP → MITRE → Unified result
 ```
+
+The same 40-field profile can now also be produced automatically from an
+uploaded CICFlowMeter CSV, PCAP/PCAPNG capture or pre-aggregated profile CSV;
+see `docs/architecture/file_ingestion.md`. The ingestion layer is an adapter
+and does not change the transformer or any model.
 
 ## 2. Current problem
 
@@ -278,8 +283,9 @@ documented); the form keeps them out to stay practical.
 |---|---|---|
 | `down_up_ratio` | `Down/Up Ratio_mean` (+ `_max` ≈ mean) | rank #34 |
 
-**39 practical fields** → 138 model features (≥120 populated non-zero for a
-complete profile; only negligible-importance fields remain zero).
+**40 practical fields** → 138 model features (≥120 populated non-zero for a
+complete profile; only negligible-importance fields remain zero). This is the
+same profile produced by the file-ingestion layer from raw flows or packets.
 
 ## 10. Are temporal observations needed?
 

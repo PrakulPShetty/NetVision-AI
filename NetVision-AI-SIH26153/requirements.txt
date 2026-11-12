@@ -27,6 +27,10 @@ joblib
 # ---------- Backend / REST API ----------
 fastapi
 uvicorn
+python-multipart
+
+# ---------- Packet Capture Ingestion ----------
+scapy
 
 # ---------- Testing ----------
 pytest

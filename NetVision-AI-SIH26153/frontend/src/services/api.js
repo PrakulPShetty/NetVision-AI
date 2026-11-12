@@ -1,10 +1,14 @@
 /**
  * NetVision AI — Primary API Client Service
- * 
- * Interacts with FastAPI backend endpoint POST /forecast
+ *
+ * Interacts with the FastAPI backend:
+ *   GET  /health          — engine reachability
+ *   POST /forecast        — practical profile or 138-feature forecast
+ *   POST /preprocess/file — capture upload (see services/upload.js)
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 /**
  * Fetch system health status
@@ -30,13 +34,7 @@ export async function getHealthStatus() {
   }
 }
 
-/**
- * Submit traffic analysis to FastAPI /forecast endpoint
- * 
- * @param {Object} trafficData - Practical network traffic fields
- * @returns {Promise<Object>} Unified forecast response from backend
- */
-export async function submitTrafficForecast(trafficData) {
+async function postForecast(body) {
   try {
     const response = await fetch(`${API_BASE_URL}/forecast`, {
       method: 'POST',
@@ -44,9 +42,7 @@ export async function submitTrafficForecast(trafficData) {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: JSON.stringify({
-        traffic: trafficData
-      }),
+      body: JSON.stringify(body),
     });
 
     if (response.status === 422) {
@@ -68,7 +64,29 @@ export async function submitTrafficForecast(trafficData) {
     console.error('API Forecast Request Error:', error);
     return {
       success: false,
-      error: error.message || 'Unable to connect to NetVision AI forecast engine.',
+      error:
+        error.message ||
+        'Unable to connect to NetVision AI forecast engine.',
     };
   }
+}
+
+/**
+ * Submit a practical 40-field traffic profile.
+ *
+ * @param {Object} trafficData - Practical network traffic fields
+ * @returns {Promise<Object>} Unified forecast response from backend
+ */
+export async function submitTrafficForecast(trafficData) {
+  return postForecast({ traffic: trafficData });
+}
+
+/**
+ * Submit a complete 138-feature model row (feature CSV path).
+ *
+ * @param {Object} features - Exactly 138 model-ready feature values
+ * @returns {Promise<Object>} Unified forecast response from backend
+ */
+export async function submitFeatureForecast(features) {
+  return postForecast({ features });
 }
