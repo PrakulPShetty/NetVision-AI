@@ -418,3 +418,97 @@ Processed Dataset Storage: Hugging Face
 Version Control: GitHub
 
 
+
+---
+
+## 15. Documentation
+
+> Full technical documentation lives in [docs/](https://github.com/PrakulPShetty/NetVision-AI/tree/main/NetVision-AI-SIH26153/docs).  
+> Every file below is a clickable link to the rendered GitHub page.
+
+---
+
+### ?? Root
+
+| File | Description |
+| :--- | :--- |
+| [docs/README.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/README.md) | Master documentation hub & sitemap — start here |
+| [docs/TESTING_VALIDATION.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/TESTING_VALIDATION.md) | 337-line comprehensive testing & validation specification |
+| [docs/PROJECT_COMPLETE_TECHNICAL_DOCUMENTATION.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/PROJECT_COMPLETE_TECHNICAL_DOCUMENTATION.md) | Monolithic technical reference covering the full project |
+
+---
+
+### ?? api/ — REST API Specifications
+
+| File | Description |
+| :--- | :--- |
+| [docs/api/forecast_api.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/api/forecast_api.md) | Full OpenAPI spec: /forecast, /health, /forecast/file schemas, request/response models |
+| [docs/api/file_ingestion_api.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/api/file_ingestion_api.md) | /preprocess/file multipart ingestion API — CSV, PCAP, PCAPNG upload |
+
+---
+
+### ?? architecture/ — System & ML Architecture
+
+| File | Description |
+| :--- | :--- |
+| [docs/architecture/system_architecture.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/architecture/system_architecture.md) | End-to-end system architecture: React ? FastAPI ? ML pipeline |
+| [docs/architecture/ml_architecture.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/architecture/ml_architecture.md) | ML ensemble design: RF + XGBoost, SMOTE, stacking strategy |
+| [docs/architecture/world_model.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/architecture/world_model.md) | Temporal Markov World Model — state transition matrix & forecasting logic |
+| [docs/architecture/xai_architecture.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/architecture/xai_architecture.md) | Probability-Space SHAP XAI — explainability design & feature attribution |
+| [docs/architecture/mitre_framework.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/architecture/mitre_framework.md) | MITRE ATT&CK behavioral mapping — tactic/technique classification layer |
+| [docs/architecture/frontend_architecture.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/architecture/frontend_architecture.md) | React/Vite dashboard architecture — component tree, state, API integration |
+| [docs/architecture/deployment_architecture.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/architecture/deployment_architecture.md) | Deployment topology — dev, staging, production environment design |
+| [docs/architecture/file_ingestion.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/architecture/file_ingestion.md) | Intelligent file ingestion pipeline — CSV/PCAP ? 138-feature canonical mapping |
+| [docs/architecture/runtime_input_design.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/architecture/runtime_input_design.md) | Runtime 40-field profile ? 138 model-feature transformer design |
+
+---
+
+### ?? datasets/ — Dataset Documentation
+
+| File | Description |
+| :--- | :--- |
+| [docs/datasets/cic_ids2018.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/datasets/cic_ids2018.md) | CIC-IDS2018 dataset profile — labels, feature distribution, preprocessing notes |
+
+---
+
+### ?? literature/ — Literature Survey
+
+| File | Description |
+| :--- | :--- |
+| [docs/literature/literature_survey.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/literature/literature_survey.md) | Full literature survey — intrusion detection, forecasting, explainability |
+| [docs/literature/paper_1.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/literature/paper_1.md) | Paper 1 — detailed review & relevance notes |
+| [docs/literature/paper_2.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/literature/paper_2.md) | Paper 2 — detailed review & relevance notes |
+| [docs/literature/paper_3.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/literature/paper_3.md) | Paper 3 — detailed review & relevance notes |
+
+---
+
+### ?? operations/ — Operational Guides
+
+| File | Description |
+| :--- | :--- |
+| [docs/operations/runner_and_testing_guide.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/operations/runner_and_testing_guide.md) | un_all.py 7-phase orchestrator guide & pytest execution reference |
+
+---
+
+### ?? research/ — Research Methodology
+
+| File | Description |
+| :--- | :--- |
+| [docs/research/methodology.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/research/methodology.md) | Research methodology — experimental design, evaluation criteria |
+| [docs/research/research_decisions.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/research/research_decisions.md) | Key design decisions — model selection rationale, threshold choices |
+| [docs/research/research_gap.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/research/research_gap.md) | Identified research gaps motivating this project |
+
+---
+
+### ?? results/ — Experimental Results
+
+| File | Description |
+| :--- | :--- |
+| [docs/results/baseline_results.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/results/baseline_results.md) | Baseline model results — accuracy, F1, AUC on CIC-IDS2018 |
+| [docs/results/forecasting_results.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/results/forecasting_results.md) | Temporal forecasting results — World Model performance & horizon analysis |
+| [docs/results/model_comparison.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/results/model_comparison.md) | Model comparison table — RF vs XGBoost vs ensemble |
+| [docs/results/xai_results.md](https://github.com/PrakulPShetty/NetVision-AI/blob/main/NetVision-AI-SIH26153/docs/results/xai_results.md) | SHAP explainability results — top features, attribution charts |
+
+---
+
+*27 documentation files · 9 categories · maintained alongside source code.*
