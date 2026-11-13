@@ -4,6 +4,7 @@ The complete technical documentation for NetVision AI (SIH26153) is maintained i
 
 ### Quick Links
 - **[Documentation Master Hub & Sitemap](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/README.md)**
+- **[Testing & Validation Framework](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/TESTING_VALIDATION.md)**
 - **[Operations & Testing Guide](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/operations/runner_and_testing_guide.md)**
 - **[Forecasting API Reference](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/api/forecast_api.md)**
 - **[Temporal World Model Architecture](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/world_model.md)**

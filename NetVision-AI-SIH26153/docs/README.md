@@ -7,6 +7,7 @@ Welcome to the **NetVision AI (SIH26153)** documentation hub. This directory con
 ## 1. Quick Navigation by Role
 
 - **For SOC Analysts & Operators**:
+  - [Testing & Validation Framework](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/TESTING_VALIDATION.md)
   - [Operations & Unified Runner Guide](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/operations/runner_and_testing_guide.md)
   - [Frontend Architecture & Cyber Command Center](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/frontend_architecture.md)
   - [MITRE ATT&CK Mapping & Playbooks](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/mitre_framework.md)
@@ -33,6 +34,7 @@ Welcome to the **NetVision AI (SIH26153)** documentation hub. This directory con
 ```
 docs/
 ├── README.md                                    # This hub & master index
+├── TESTING_VALIDATION.md                        # Empirical testing matrix, benchmarks & SLAs
 ├── PROJECT_COMPLETE_TECHNICAL_DOCUMENTATION.md  # Comprehensive monolithic technical guide
 │
 ├── api/                                         # REST API & Ingestion contracts
