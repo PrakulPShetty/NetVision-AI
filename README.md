@@ -87,7 +87,7 @@ flowchart TD
 
 ```powershell
 # 1. Clone repository
-git clone https://github.com/PrakulPShetty/NetVision-AI-SIH26153.git
+git clone https://github.com/PrakulPShetty/NetVision-AI.git
 cd NetVision-AI-SIH26153
 
 # 2. Install Python dependencies
@@ -131,7 +131,7 @@ Once launched with `--serve`:
 | `POST` | `/forecast/file` | Multipart file upload (PCAP/CSV) with end-to-end forecasting | `multipart/form-data` |
 | `POST` | `/preprocess/file` | Inspect capture windows and flow statistics without forecasting | `multipart/form-data` |
 
-Detailed API schemas and examples are documented in [`docs/api/forecast_api.md`](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/api/forecast_api.md).
+Detailed API schemas and examples are documented in [`docs/api/forecast_api.md`](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/api/forecast_api.md).
 
 ---
 
@@ -157,24 +157,24 @@ tests\test_temporal.py .                                                 [100%]
   - Full 138-feature & 186-column file ingestion: **$100\%$ accuracy, $F_1 = 1.0000$**.
   - 40 practical inputs expanded via Runtime Transformer: **$100\%$ precision, $r = 0.9235$**.
   - Top 60 SHAP feature subsets: **$94\%$ state agreement, $r = 0.9516$**.
-- Detailed benchmarking tables and SLA compliance: [`docs/TESTING_VALIDATION.md`](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/TESTING_VALIDATION.md).
+- Detailed benchmarking tables and SLA compliance: [`docs/TESTING_VALIDATION.md`](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/TESTING_VALIDATION.md).
 
 ---
 
 ## 6. Complete Documentation Directory
 
-All detailed architecture, research, API, operations, and dataset documents are maintained in [`docs/`](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/README.md):
+All detailed architecture, research, API, operations, and dataset documents are maintained in [`docs/`](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/README.md):
 
-- **[Master Documentation Hub & Sitemap](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/README.md)**
-- **[Testing & Validation Framework](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/TESTING_VALIDATION.md)**
-- **[Operations & Runner Guide](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/operations/runner_and_testing_guide.md)**
-- **[Forecasting API Specification](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/api/forecast_api.md)**
-- **[Temporal World Model Architecture](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/world_model.md)**
-- **[MITRE ATT&CK Behavioral Mapping](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/mitre_framework.md)**
-- **[Explainable AI (XAI) & SHAP Architecture](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/xai_architecture.md)**
-- **[Frontend Architecture & UI Design System](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/frontend_architecture.md)**
-- **[Capture Ingestion & Windowing Architecture](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/file_ingestion.md)**
-- **[Complete Technical Reference Guide](file:///C:/Users/Asus/Documents/GitHub/NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/PROJECT_COMPLETE_TECHNICAL_DOCUMENTATION.md)**
+- **[Master Documentation Hub & Sitemap](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/README.md)**
+- **[Testing & Validation Framework](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/TESTING_VALIDATION.md)**
+- **[Operations & Runner Guide](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/operations/runner_and_testing_guide.md)**
+- **[Forecasting API Specification](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/api/forecast_api.md)**
+- **[Temporal World Model Architecture](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/world_model.md)**
+- **[MITRE ATT&CK Behavioral Mapping](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/mitre_framework.md)**
+- **[Explainable AI (XAI) & SHAP Architecture](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/xai_architecture.md)**
+- **[Frontend Architecture & UI Design System](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/frontend_architecture.md)**
+- **[Capture Ingestion & Windowing Architecture](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/architecture/file_ingestion.md)**
+- **[Complete Technical Reference Guide](NetVision-AI-SIH26153/NetVision-AI-SIH26153/docs/PROJECT_COMPLETE_TECHNICAL_DOCUMENTATION.md)**
 
 ---
 
