@@ -78,6 +78,11 @@ flowchart TD
 
 ## 3. Quick Start & Execution
 
+The Git repository contains the application in `NetVision-AI-SIH26153/`.
+The small `run_all.py` at the repository root forwards commands to the
+application runner in that directory, so it can also be used from the clone
+root.
+
 ### 3.1 Prerequisites
 - **Python**: 3.10, 3.11, 3.12, or 3.13
 - **Node.js**: v18+ (v24 recommended)
@@ -88,15 +93,20 @@ flowchart TD
 ```powershell
 # 1. Clone repository
 git clone https://github.com/PrakulPShetty/NetVision-AI.git
+cd NetVision-AI
+
+# 2. Enter the application project
 cd NetVision-AI-SIH26153
 
-# 2. Install Python dependencies
-pip install -r requirements.txt
+# 3. Install Python dependencies
+py -3.13 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 
-# 3. Install frontend dependencies
-cd NetVision-AI-SIH26153/frontend
+# 4. Install frontend dependencies
+cd frontend
 npm install
-cd ../..
+cd ..
 ```
 
 ### 3.3 Running the Unified Orchestrator (`run_all.py`)
@@ -104,7 +114,7 @@ cd ../..
 NetVision AI includes a zero-friction runner script that coordinates automated validation and service startup:
 
 ```powershell
-# Run the 7-Phase Verification Suite (approx. 5s)
+# Run the end-to-end verification suite
 python run_all.py
 
 # Skip production npm build during fast testing
@@ -113,6 +123,31 @@ python run_all.py --skip-build
 # Launch the Full Interactive Application (FastAPI on :8000 + React on :5173)
 python run_all.py --serve
 ```
+
+From the repository clone root, `python run_all.py --serve` invokes the
+forwarding wrapper; you can also run
+`python NetVision-AI-SIH26153/run_all.py --serve` directly.
+
+### 3.4 Starting the services separately
+
+You can also run the backend and frontend in separate terminals. Start the
+backend from the application directory (`NetVision-AI-SIH26153/`) with its
+virtual environment activated:
+
+```powershell
+python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+In a second terminal, from the same application directory, start the frontend:
+
+```powershell
+cd frontend
+npm run dev
+```
+
+Open the Vite URL, normally `http://localhost:5173`. The frontend sends API
+requests to the backend at `http://localhost:8000`. Keep both terminals open
+while using the application.
 
 Once launched with `--serve`:
 - **Web Dashboard**: [`http://localhost:5173`](http://localhost:5173)

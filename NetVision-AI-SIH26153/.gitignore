@@ -10,6 +10,7 @@ context.md
 
 # ---------- Virtual Environments ----------
 .venv/
+.venv313/
 venv/
 env/
 ENV/
@@ -39,7 +40,11 @@ data/processed/*
 !data/processed/README.md
 
 # ---------- Model Artifacts ----------
-# Trained models can become large
+# The backend inference artifacts are intentionally tracked so public clones
+# can run without a separate model download.
+# Ignore local training-only outputs.
+models/checkpoints/
+models/experiments/
 
 
 # Keep documentation
@@ -50,6 +55,14 @@ data/processed/*
 *.temp
 *.log
 *.cache
+
+# ---------- Frontend Dependencies / Build Output ----------
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
 
 # ---------- Python Build Files ----------
 build/

@@ -147,7 +147,9 @@ def check_artifacts() -> bool:
     if feat_path.exists():
         with open(feat_path, encoding="utf-8") as f:
             feats = json.load(f)
-            check_mark(len(feats) == 138, "Feature Contract Schema", f"{len(feats)} features")
+            feature_contract_ok = len(feats) == 138
+            check_mark(feature_contract_ok, "Feature Contract Schema", f"{len(feats)} features")
+            all_ok = all_ok and feature_contract_ok
 
     return all_ok
 
@@ -175,7 +177,9 @@ def run_direct_pipeline_test() -> Dict[str, Any]:
         shap_background_data=shap_bg,
     )
     init_time = (time.perf_counter() - t0) * 1000
-    check_mark(True, "Pipeline Initialization", f"{init_time:.1f}ms")
+    checks_passed = [
+        check_mark(True, "Pipeline Initialization", f"{init_time:.1f}ms")
+    ]
 
     # Scenario 1: Nominal Benign Traffic
     sample_benign = {
@@ -197,11 +201,11 @@ def run_direct_pipeline_test() -> Dict[str, Any]:
 
     ens_prob = benign_res["ml"]["ensemble_attack_probability"]
     state = benign_res["ml"]["predicted_current_state"]
-    check_mark(
+    checks_passed.append(check_mark(
         ens_prob < 0.40,
         f"Benign Scenario Inference (P_attack={ens_prob:.4f} -> {state})",
         f"{benign_dur:.1f}ms"
-    )
+    ))
 
     # Scenario 2: Attack Traffic (High volume flood scenario TC2)
     sample_attack = {
@@ -252,42 +256,45 @@ def run_direct_pipeline_test() -> Dict[str, Any]:
 
     atk_prob = attack_res["ml"]["ensemble_attack_probability"]
     atk_state = attack_res["ml"]["predicted_current_state"]
-    check_mark(
+    checks_passed.append(check_mark(
         atk_prob >= 0.40,
         f"Attack Scenario Inference (P_attack={atk_prob:.4f} -> {atk_state})",
         f"{attack_dur:.1f}ms"
-    )
+    ))
 
     # World Model Verification
     forecasts = attack_res.get("world_model_forecast", {})
     horizons = list(forecasts.keys())
-    check_mark(
+    checks_passed.append(check_mark(
         len(horizons) == 5,
         f"World Model Forecasting Horizons ({len(horizons)} steps: 10m to 60m)",
         ", ".join(horizons)
-    )
+    ))
 
     # XAI Verification
     xai = attack_res.get("xai", {})
     valid_xai = xai.get("validation_passed", False)
     top_feature = xai.get("top_contributions", [{}])[0].get("feature", "N/A")
-    check_mark(valid_xai, "Probability-Space SHAP Attribution", f"Top feature: {top_feature}")
+    checks_passed.append(
+        check_mark(valid_xai, "Probability-Space SHAP Attribution", f"Top feature: {top_feature}")
+    )
 
     # MITRE ATT&CK Mapping
     mitre = attack_res.get("mitre_attack", {})
     mitre_status = str(mitre.get("mapping_status", "unknown"))
     techniques = mitre.get("techniques", [])
     mitre_ok = "identified" in mitre_status.lower() or "mapped" in mitre_status.lower() or len(techniques) > 0
-    check_mark(
+    checks_passed.append(check_mark(
         mitre_ok,
         f"MITRE ATT&CK Alignment (Status: {mitre_status})",
         f"{len(techniques)} technique(s) mapped"
-    )
+    ))
 
     return {
         "benign": benign_res,
         "attack": attack_res,
         "pipeline": pipeline,
+        "checks_passed": all(checks_passed),
     }
 
 
@@ -320,20 +327,20 @@ def run_ingestion_test() -> bool:
     window_count = res.get("window_count", 0)
     windows = res.get("windows", [])
 
-    check_mark(
+    csv_ok = check_mark(
         window_count >= 1,
         "CICFlowMeter Flow CSV Ingestion",
         f"{source_type} -> {window_count} window(s)"
     )
 
     has_profile = len(windows) > 0 and len(windows[0].get("profile", {})) > 0
-    check_mark(
+    profile_ok = check_mark(
         has_profile,
         "5-Minute Window Profile Synthesis",
         f"{len(windows[0].get('profile', {}))} fields populated"
     )
 
-    return True
+    return csv_ok and profile_ok
 
 
 # ==============================================================================
@@ -345,19 +352,20 @@ def run_backend_api_test() -> bool:
     from backend.app.main import app
 
     client = TestClient(app)
+    checks_passed = []
 
     # 1. GET /
     r_root = client.get("/")
-    check_mark(r_root.status_code == 200, "GET / (Root Service Info)", f"Status {r_root.status_code}")
+    checks_passed.append(check_mark(r_root.status_code == 200, "GET / (Root Service Info)", f"Status {r_root.status_code}"))
 
     # 2. GET /health
     r_health = client.get("/health")
     data = r_health.json() if r_health.status_code == 200 else {}
-    check_mark(
+    checks_passed.append(check_mark(
         r_health.status_code == 200 and data.get("status") == "healthy",
         "GET /health (Engine Health & Models Loaded)",
         f"Status {r_health.status_code}"
-    )
+    ))
 
     # 3. POST /forecast with practical profile
     traffic_payload = {
@@ -370,11 +378,11 @@ def run_backend_api_test() -> bool:
         }
     }
     r_fc = client.post("/forecast", json=traffic_payload)
-    check_mark(
+    checks_passed.append(check_mark(
         r_fc.status_code == 200,
         "POST /forecast (40-Field Traffic Profile)",
         f"Status {r_fc.status_code}"
-    )
+    ))
 
     # 4. POST /preprocess/file (CSV upload)
     csv_bytes = (
@@ -394,21 +402,21 @@ def run_backend_api_test() -> bool:
     ).encode("utf-8")
 
     r_prep = client.post("/preprocess/file", files={"file": ("capture.csv", csv_bytes, "text/csv")})
-    check_mark(
+    checks_passed.append(check_mark(
         r_prep.status_code == 200,
         "POST /preprocess/file (Multipart CSV Ingestion)",
         f"Status {r_prep.status_code}"
-    )
+    ))
 
     # 5. POST /forecast/file (Direct file forecast)
     r_fc_file = client.post("/forecast/file", files={"file": ("capture.csv", csv_bytes, "text/csv")})
-    check_mark(
+    checks_passed.append(check_mark(
         r_fc_file.status_code == 200,
         "POST /forecast/file (End-to-End File Forecast)",
         f"Status {r_fc_file.status_code}"
-    )
+    ))
 
-    return True
+    return all(checks_passed)
 
 
 # ==============================================================================
@@ -552,6 +560,7 @@ def main():
         sys.exit(1)
 
     direct_res = run_direct_pipeline_test()
+    ok_ml = direct_res.get("checks_passed", False)
     ok_ingest = run_ingestion_test()
     ok_api = run_backend_api_test()
     ok_front = check_frontend(skip_build=args.skip_build)
@@ -559,18 +568,32 @@ def main():
     total_time = time.perf_counter() - t_start
 
     # Final Summary Table
-    print(f"\n{Colors.BOLD}{Colors.GREEN}================================================================================{Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.GREEN}                    ALL END-TO-END CHECKS PASSED (100%){Colors.RESET}")
-    print(f"{Colors.BOLD}{Colors.GREEN}================================================================================{Colors.RESET}")
+    checks = [
+        ("Environment & Dependencies", ok_env),
+        ("Model & Artifact Integrity", ok_art),
+        ("ML Ensemble, World Model, XAI & MITRE", ok_ml),
+        ("Ingestion Engine (CSV/PCAP)", ok_ingest),
+        ("FastAPI Backend & Endpoints", ok_api),
+        ("React Frontend Build", None if args.skip_build else ok_front),
+    ]
+    all_passed = all(status is not False for _, status in checks)
+    total_time = time.perf_counter() - t_start
+    summary_color = Colors.GREEN if all_passed else Colors.RED
+    summary_title = "ALL REQUESTED CHECKS PASSED" if all_passed else "ONE OR MORE CHECKS FAILED"
+    print(f"\n{Colors.BOLD}{summary_color}{'=' * 80}{Colors.RESET}")
+    print(f"{Colors.BOLD}{summary_color}{summary_title}{Colors.RESET}")
+    print(f"{Colors.BOLD}{summary_color}{'=' * 80}{Colors.RESET}")
     print(f"Total Execution Time: {total_time:.2f}s\n")
-    print(f"  1. Environment & Dependencies:   {Colors.GREEN}✔ PASSED{Colors.RESET}")
-    print(f"  2. Model & Artifact Integrity:    {Colors.GREEN}✔ PASSED{Colors.RESET}")
-    print(f"  3. ML Ensemble & World Model:     {Colors.GREEN}✔ PASSED{Colors.RESET}")
-    print(f"  4. SHAP XAI & MITRE Mapping:      {Colors.GREEN}✔ PASSED{Colors.RESET}")
-    print(f"  5. Ingestion Engine (CSV/PCAP):   {Colors.GREEN}✔ PASSED{Colors.RESET}")
-    print(f"  6. FastAPI Backend & Endpoints:   {Colors.GREEN}✔ PASSED{Colors.RESET}")
-    print(f"  7. React Frontend Build:          {Colors.GREEN}✔ PASSED{Colors.RESET}")
+    for index, (label, status) in enumerate(checks, start=1):
+        if status is None:
+            result_label, result_color = "SKIPPED", Colors.YELLOW
+        else:
+            result_label = "PASSED" if status else "FAILED"
+            result_color = Colors.GREEN if status else Colors.RED
+        print(f"  {index}. {label}: {result_color}{result_label}{Colors.RESET}")
 
+    if not all_passed:
+        sys.exit(1)
     if args.serve:
         serve_servers(backend_port=args.backend_port, frontend_port=args.frontend_port)
     else:

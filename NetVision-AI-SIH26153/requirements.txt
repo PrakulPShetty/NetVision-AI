@@ -34,3 +34,4 @@ scapy
 
 # ---------- Testing ----------
 pytest
+httpx2

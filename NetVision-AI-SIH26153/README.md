@@ -219,15 +219,15 @@ NetVision-AI-SIH26153/
 
 ```bash
 # Clone the repository
-git clone https://github.com/PrakulPShetty/NetVision-AI-SIH26153.git
-cd NetVision-AI-SIH26153/NetVision-AI-SIH26153
+git clone https://github.com/PrakulPShetty/NetVision-AI.git
+cd NetVision-AI/NetVision-AI-SIH26153
 
 # Create & activate a Python virtual environment
-python -m venv .venv313
+python -m venv .venv
 # Windows (PowerShell):
-.venv313\Scripts\Activate.ps1
+.venv\Scripts\Activate.ps1
 # Linux/macOS:
-source .venv313/bin/activate
+source .venv/bin/activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -245,9 +245,9 @@ npm install
 ## 10. Running the Application
 
 ### Option A: Run Backend Server
-From the project root:
+From the application project root (the directory containing backend/ and frontend/), with .venv activated:
 ```bash
-.venv313\Scripts\python.exe -m uvicorn backend.app.main:app --port 8000 --host 127.0.0.1 --reload
+python -m uvicorn backend.app.main:app --port 8000 --host 127.0.0.1 --reload
 ```
 The FastAPI backend will start at `http://127.0.0.1:8000`.  
 Interactive API docs are available at `http://127.0.0.1:8000/docs`.
@@ -257,7 +257,7 @@ From the `frontend/` directory:
 ```bash
 npm run dev
 ```
-The React web dashboard will launch at `http://localhost:3000`.
+The React web dashboard will launch at `http://localhost:5173`.
 
 ---
 
@@ -343,7 +343,7 @@ The React web dashboard will launch at `http://localhost:3000`.
 Run the complete Pytest suite to verify feature transformation, ML model loading, Markov state transitions, ingestion, and API routes:
 
 ```bash
-.venv313\Scripts\python.exe -m pytest
+python -m pytest
 ```
 
 The ingestion suites (`tests/test_file_ingestion.py`, `tests/test_ingestion_api.py`) run without the trained artifacts; model-path tests require `models/trained/*` and `models/forecasting/*` to be present.
