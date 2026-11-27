@@ -1,0 +1,25 @@
+
+> netvision-ai-frontend@1.0.0 dev
+> vite --host 127.0.0.1
+
+Port 3000 is in use, trying another one...
+
+  VITE v6.4.3  ready in 612 ms
+
+  ➜  Local:   http://127.0.0.1:3001/
+  ➜  press h + enter to show help
+7:07:24 pm [vite] (client) hmr update /src/App.jsx, /src/index.css
+7:07:27 pm [vite] (client) hmr update /src/index.css
+7:17:38 pm [vite] (client) hmr update /src/App.jsx, /src/index.css
+7:17:52 pm [vite] (client) hmr update /src/index.css
+7:30:55 pm [vite] (client) hmr update /src/index.css
+7:38:53 pm [vite] (client) hmr update /src/App.jsx, /src/index.css
+7:39:14 pm [vite] (client) hmr update /src/index.css
+7:48:40 pm [vite] (client) hmr update /src/App.jsx, /src/index.css
+7:49:02 pm [vite] (client) hmr update /src/index.css
+7:56:30 pm [vite] (client) hmr update /src/index.css
+8:01:23 pm [vite] (client) hmr update /src/index.css
+8:01:24 pm [vite] (client) hmr update /src/App.jsx
+8:07:40 pm [vite] (client) hmr update /src/App.jsx, /src/index.css
+8:08:07 pm [vite] (client) hmr update /src/index.css
+8:18:22 pm [vite] (client) hmr update /src/index.css
